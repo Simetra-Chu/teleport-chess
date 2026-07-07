@@ -29,23 +29,23 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen text-stone-100">
-      <header className="border-b border-white/10 bg-black/30 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-4">
-          <div>
-            <h1 className="text-xl font-bold tracking-tight">瞬移国际象棋</h1>
-            <p className="text-xs text-white/45">
+    <div className="app-shell min-h-[100dvh] overflow-x-hidden text-stone-100">
+      <header className="sticky top-0 z-30 border-b border-white/10 bg-black/40 backdrop-blur-md">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-[var(--page-x)] py-3 sm:gap-4 sm:py-4">
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate text-base font-bold tracking-tight sm:text-xl">瞬移国际象棋</h1>
+            <p className="truncate text-[11px] text-white/45 sm:text-xs">
               {mp.phase === 'lobby'
                 ? '联机对战 · 创建或加入房间'
                 : `房间 ${mp.roomCode} · ${mp.roomStatus === 'waiting' ? '等待对手' : '在线对战中'}`}
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <TutorialButton onClick={() => setTutorialOpen(true)} variant="header" />
 
             {mp.phase === 'room' && (
-              <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-4 py-1.5 text-xs font-medium text-amber-400">
+              <span className="hidden rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-400 sm:inline sm:px-4 sm:py-1.5">
                 {mp.playerColor
                   ? `你执${mp.playerColor === 'white' ? '白' : '黑'}`
                   : '联机中'}

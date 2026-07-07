@@ -1,13 +1,250 @@
 @import "tailwindcss";
 
+:root {
+  --page-x: clamp(0.75rem, 3vw, 1.5rem);
+  --board-max: 560px;
+  --header-h: 3.25rem;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  overflow-x: hidden;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
+  min-height: 100dvh;
   font-family: "Segoe UI", system-ui, sans-serif;
   background: radial-gradient(ellipse at 15% 0%, #1e1e32 0%, #0d0d14 65%);
   -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
+  overflow-x: hidden;
 }
 
-#root {
+body.is-dragging-piece {
+  overflow: hidden;
+  touch-action: none;
+}
+
+#root,
+.app-shell {
   min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  width: 100%;
+}
+
+/* ═══════════════════════════════════════
+   对局页：窄屏上下结构 / 宽屏左右结构
+   ═══════════════════════════════════════ */
+.game-page {
+  width: 100%;
+  max-width: 80rem;
+  margin-inline: auto;
+  padding: 0.75rem var(--page-x) calc(1.25rem + env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 640px) {
+  .game-page {
+    padding-top: 1.25rem;
+    padding-bottom: 2rem;
+  }
+}
+
+/* 默认（手机）：纵向 flex，棋盘在上、信息在下 */
+.game-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+}
+
+/* 平板及以上：仍保持纵向，棋盘更宽 */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .game-layout {
+    gap: 1.25rem;
+  }
+}
+
+/* 桌面：左右两栏 */
+@media (min-width: 1024px) {
+  .game-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 22.5rem;
+    gap: 2rem;
+    align-items: start;
+  }
+}
+
+.game-board-column {
+  order: 1;
+  width: 100%;
+  min-width: 0;
+}
+
+.game-info-column {
+  order: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+  min-width: 0;
+}
+
+@media (min-width: 1024px) {
+  .game-info-column {
+    position: sticky;
+    top: calc(var(--header-h) + 0.75rem);
+    max-height: calc(100dvh - var(--header-h) - 1.5rem);
+    overflow-y: auto;
+  }
+}
+
+/* ── 棋盘容器：100% 宽、1:1 等比、棋子随格缩放 ── */
+.chess-board-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  margin-inline: auto;
+  aspect-ratio: 1 / 1;
+  touch-action: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  overflow: hidden;
+  border-radius: 8px;
+  contain: layout style;
+}
+
+/* 手机：棋盘尽量占满屏宽（扣除安全区） */
+@media (max-width: 1023px) {
+  .game-board-column {
+    width: calc(100% + 2 * var(--page-x));
+    max-width: 100vw;
+    margin-inline: calc(-1 * var(--page-x));
+    padding-inline: max(var(--page-x), env(safe-area-inset-left, 0px))
+      max(var(--page-x), env(safe-area-inset-right, 0px));
+  }
+
+  .chess-board-wrap {
+    max-width: min(
+      100%,
+      calc(100vw - 2 * max(var(--page-x), env(safe-area-inset-left, 0px)))
+    );
+  }
+}
+
+@media (min-width: 1024px) {
+  .chess-board-wrap {
+    max-width: min(100%, var(--board-max));
+  }
+}
+
+/* react-chessboard 内部节点强制填满容器 */
+.chess-board-wrap > div,
+.chess-board-wrap [id$="-board"] {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  touch-action: none;
+}
+
+.chess-board-wrap svg {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
+
+/* 手机端操作栏：吸底，方便拇指触达 */
+.mobile-action-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+@media (max-width: 1023px) {
+  .mobile-action-bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 20;
+    margin-top: 0.25rem;
+    padding: 0.75rem 0 calc(0.5rem + env(safe-area-inset-bottom, 0px));
+    background: linear-gradient(to top, #0d0d14 70%, transparent);
+  }
+}
+
+/* 状态面板：手机横向滚动，避免挤压错位 */
+.game-status-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+@media (min-width: 480px) {
+  .game-status-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .game-status-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ═══════════════════════════════════════
+   大厅：窄屏上下 / 宽屏左右
+   ═══════════════════════════════════════ */
+.lobby-page {
+  width: 100%;
+  max-width: 64rem;
+  margin-inline: auto;
+  padding: 1rem var(--page-x) calc(1.5rem + env(safe-area-inset-bottom, 0px));
+  min-height: calc(100dvh - var(--header-h));
+}
+
+.lobby-layout {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 1.25rem;
+  width: 100%;
+}
+
+@media (min-width: 1024px) {
+  .lobby-page {
+    padding-top: 1.5rem;
+    padding-bottom: 2rem;
+  }
+
+  .lobby-layout {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 2rem;
+  }
+}
+
+.safe-bottom {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+.safe-bottom-offset {
+  margin-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@media (pointer: coarse) {
+  button,
+  input[type="number"],
+  input[type="text"] {
+    min-height: 44px;
+  }
 }

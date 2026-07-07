@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Chessboard } from 'react-chessboard'
 import PromotionDialog from './PromotionDialog'
 import {
@@ -15,7 +15,7 @@ import {
   outcomeLabel,
   type PromoPiece,
 } from '../gameStatus'
-import { applyNormalMove, checkNormalMoveValid, getPseudoLegalTargets } from '../normalMoves'
+import { applyNormalMove, checkNormalMoveValid } from '../normalMoves'
 import {
   BOARD_DARK,
   BOARD_LIGHT,
@@ -25,6 +25,9 @@ import {
   isPieceOfColor,
 } from '../multiplayer/gameHelpers'
 import { emitAck } from '../multiplayer/socket'
+import { useIsTouchDevice } from '../hooks/useIsTouchDevice'
+import { useLegalHighlights } from '../hooks/useLegalHighlights'
+import { useBoardTouchGuard } from '../hooks/useBoardTouchGuard'
 import RuleConfigPanel from './RuleConfigPanel'
 import type { PlayerColor, RoomStatus } from '../multiplayer/types'
 
@@ -64,7 +67,17 @@ export default function GameView({
   const [teleportMode, setTeleportMode] = useState(false)
   const [selectedSquare, setSelectedSquare] = useState<string | null>(null)
   const [pendingMove, setPendingMove] = useState<PendingMove | null>(null)
-  const [message, setMessage] = useState('拖拽走棋，或开启瞬移模式点击选子再点目标格')
+  const [message, setMessage] = useState('点击或拖拽己方棋子走棋')
+  const [isDragging, setIsDragging] = useState(false)
+  const boardRef = useRef<HTMLDivElement>(null)
+
+  const isTouch = useIsTouchDevice()
+  useBoardTouchGuard(boardRef, isTouch)
+
+  useEffect(() => {
+    document.body.classList.toggle('is-dragging-piece', isDragging)
+    return () => document.body.classList.remove('is-dragging-piece')
+  }, [isDragging])
 
   const myTurn = isMyTurn(gameState, playerColor)
   const canPlay = !isOnline || roomStatus === 'playing'
@@ -142,6 +155,9 @@ export default function GameView({
       coords: { fr: number; fc: number; tr: number; tc: number; promoPiece?: string | null },
       moveMsg: string,
     ) => {
+      const snapshot = gameState
+      applyLocalOutcome(next, moveMsg)
+
       const sync = await syncToServer(
         next,
         kind,
@@ -152,13 +168,13 @@ export default function GameView({
         coords.promoPiece ?? null,
       )
       if (!sync.ok) {
-        setMessage(sync.error || '同步失败，请重试')
+        setGameState(snapshot)
+        setMessage(sync.error || '同步失败，已撤销本步')
         return false
       }
-      applyLocalOutcome(next, moveMsg)
       return true
     },
-    [syncToServer, applyLocalOutcome],
+    [gameState, syncToServer, applyLocalOutcome, setGameState],
   )
 
   const guardInteraction = useCallback(
@@ -240,34 +256,21 @@ export default function GameView({
     [gameState, playerColor],
   )
 
+  const legalHighlights = useLegalHighlights(
+    gameState,
+    config,
+    selectedSquare,
+    teleportMode,
+    canPlay && myTurn && !gameOver,
+  )
+
   const squareStyles = useMemo(() => {
-    const styles: Record<string, CSSProperties> = {}
+    const styles: Record<string, CSSProperties> = { ...legalHighlights }
 
     if (canPlay && myTurn && !gameOver && selectedSquare) {
-      styles[selectedSquare] = { backgroundColor: 'rgba(201, 162, 39, 0.55)' }
-      const [fr, fc] = squareToCoord(selectedSquare)
-
-      if (teleportMode) {
-        for (let tr = 0; tr < 8; tr++) {
-          for (let tc = 0; tc < 8; tc++) {
-            const { valid } = checkTeleportValid(gameState, config, fr, fc, tr, tc)
-            if (valid) {
-              styles[coordToSquare(tr, tc)] = {
-                background: 'radial-gradient(circle, rgba(147, 51, 234, 0.55) 36%, transparent 37%)',
-              }
-            }
-          }
-        }
-      } else {
-        for (const [tr, tc] of getPseudoLegalTargets(gameState, fr, fc)) {
-          const sq = coordToSquare(tr, tc)
-          const { valid } = checkNormalMoveValid(gameState, config, fr, fc, tr, tc)
-          if (valid) {
-            styles[sq] = {
-              background: 'radial-gradient(circle, rgba(34, 197, 94, 0.5) 36%, transparent 37%)',
-            }
-          }
-        }
+      styles[selectedSquare] = {
+        ...styles[selectedSquare],
+        backgroundColor: 'rgba(201, 162, 39, 0.55)',
       }
     }
 
@@ -282,7 +285,7 @@ export default function GameView({
     }
 
     return styles
-  }, [canPlay, myTurn, selectedSquare, teleportMode, gameState, config, gameOver, outcome])
+  }, [legalHighlights, canPlay, myTurn, selectedSquare, gameOver, outcome, gameState])
 
   const handleSquareClick = useCallback(
     ({ square }: { square: string }) => {
@@ -323,6 +326,7 @@ export default function GameView({
       sourceSquare: string
       targetSquare: string | null
     }) => {
+      setIsDragging(false)
       if (!targetSquare || teleportMode || gameOver || pendingMove) return false
       if (!guardInteraction(sourceSquare)) return false
 
@@ -342,25 +346,58 @@ export default function GameView({
       position: fen,
       onPieceDrop,
       onSquareClick: handleSquareClick,
-      animationDurationInMs: 180,
+      onPieceDrag: () => setIsDragging(true),
+      animationDurationInMs: isTouch ? 0 : 100,
+      showAnimations: !isTouch,
       boardOrientation,
       allowDragging: draggingAllowed,
+      allowAutoScroll: false,
+      dragActivationDistance: isTouch ? 12 : 3,
       canDragPiece: ({ square }: { square: string | null }) =>
         !!square && draggingAllowed && isSelectableSquare(square),
       darkSquareStyle: { backgroundColor: BOARD_DARK },
       lightSquareStyle: { backgroundColor: BOARD_LIGHT },
       squareStyles,
       boardStyle: {
-        borderRadius: '10px',
-        boxShadow: '0 25px 50px -12px rgba(0,0,0,0.55)',
+        width: '100%',
+        height: '100%',
+        borderRadius: '8px',
+        boxShadow: '0 16px 40px -12px rgba(0,0,0,0.55)',
+        touchAction: 'none',
       },
       dropSquareStyle: {
         boxShadow: 'inset 0 0 1px 6px rgba(34, 197, 94, 0.65)',
       },
       id: 'teleport-chess',
     }),
-    [fen, onPieceDrop, handleSquareClick, boardOrientation, draggingAllowed, isSelectableSquare, squareStyles],
+    [
+      fen,
+      onPieceDrop,
+      handleSquareClick,
+      isTouch,
+      boardOrientation,
+      draggingAllowed,
+      isSelectableSquare,
+      squareStyles,
+    ],
   )
+
+  useEffect(() => {
+    if (!isDragging) return
+    const endDrag = () => setIsDragging(false)
+    document.addEventListener('mouseup', endDrag)
+    document.addEventListener('touchend', endDrag)
+    document.addEventListener('touchcancel', endDrag)
+    return () => {
+      document.removeEventListener('mouseup', endDrag)
+      document.removeEventListener('touchend', endDrag)
+      document.removeEventListener('touchcancel', endDrag)
+    }
+  }, [isDragging])
+
+  useEffect(() => {
+    if (!draggingAllowed) setIsDragging(false)
+  }, [draggingAllowed])
 
   const statusColor =
     outcome.status === 'checkmate'
@@ -372,142 +409,156 @@ export default function GameView({
           : 'text-emerald-400'
 
   return (
-    <main className="mx-auto grid max-w-7xl gap-8 px-6 py-8 lg:grid-cols-[1fr_360px] lg:items-start">
-      <section className="flex flex-col items-center gap-5">
-        <div className="grid w-full max-w-xl grid-cols-2 gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-center text-sm sm:grid-cols-5">
-          {isOnline && (
-            <>
-              <div>
-                <p className="text-white/40">房间号</p>
-                <p className="font-mono font-bold tracking-widest text-purple-400">{roomCode}</p>
-              </div>
-              <div>
-                <p className="text-white/40">你的阵营</p>
-                <p className="font-semibold text-amber-400">
-                  {playerColor ? colorLabel(playerColor) : '—'}
-                </p>
-              </div>
-            </>
-          )}
-          <div>
-            <p className="text-white/40">当前回合</p>
-            <p className="font-semibold text-amber-400">
-              {gameOver ? '—' : gameState.white_turn ? '白方' : '黑方'}
+    <main className="game-page">
+      <div className="game-layout">
+        {/* 手机：上方棋盘；桌面：左侧棋盘 */}
+        <section className="game-board-column">
+          <div className="chess-board-wrap" ref={boardRef}>
+            <Chessboard options={chessboardOptions} />
+
+            {pendingMove && (
+              <PromotionDialog
+                isWhite={gameState.white_turn}
+                onSelect={handlePromotionSelect}
+                onCancel={() => {
+                  setPendingMove(null)
+                  setMessage('已取消升变')
+                }}
+              />
+            )}
+
+            {isOnline && roomStatus === 'waiting' && playerColor === 'white' && (
+              <WaitingOverlay roomCode={roomCode!} />
+            )}
+
+            {outcome.status === 'checkmate' && (
+              <GameOverOverlay
+                title="将死 Checkmate"
+                subtitle={`${outcome.winner === 'white' ? '白方' : '黑方'}获胜`}
+                tone="checkmate"
+                onRestart={() => {
+                  setGameState(initGame(config))
+                  setMessage('本地棋盘已重置（联机需双方重新开局）')
+                }}
+              />
+            )}
+
+            {outcome.status === 'stalemate' && (
+              <GameOverOverlay
+                title="逼和 Stalemate"
+                subtitle="无合法走法且未被将军"
+                tone="stalemate"
+                onRestart={() => {
+                  setGameState(initGame(config))
+                  setMessage('本地棋盘已重置')
+                }}
+              />
+            )}
+          </div>
+        </section>
+
+        {/* 手机：下方信息/记录；桌面：右侧边栏 */}
+        <aside className="game-info-column">
+          <div className="game-status-grid rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-center text-xs sm:text-sm">
+            {isOnline && (
+              <>
+                <div>
+                  <p className="text-white/40">房间号</p>
+                  <p className="font-mono font-bold tracking-widest text-purple-400">{roomCode}</p>
+                </div>
+                <div>
+                  <p className="text-white/40">你的阵营</p>
+                  <p className="font-semibold text-amber-400">
+                    {playerColor ? colorLabel(playerColor) : '—'}
+                  </p>
+                </div>
+              </>
+            )}
+            <div>
+              <p className="text-white/40">当前回合</p>
+              <p className="font-semibold text-amber-400">
+                {gameOver ? '—' : gameState.white_turn ? '白方' : '黑方'}
+              </p>
+            </div>
+            <div>
+              <p className="text-white/40">局面状态</p>
+              <p className={`font-semibold ${statusColor}`}>{outcomeLabel(outcome)}</p>
+            </div>
+            <div>
+              <p className="text-white/40">白方瞬移</p>
+              <p className="font-semibold">{gameState.white_tp_left} 次</p>
+            </div>
+            <div>
+              <p className="text-white/40">黑方瞬移</p>
+              <p className="font-semibold">{gameState.black_tp_left} 次</p>
+            </div>
+          </div>
+
+          {!myTurn && canPlay && !gameOver && (
+            <p className="rounded-lg border border-orange-500/30 bg-orange-950/30 px-3 py-2 text-center text-xs text-orange-300 sm:text-sm">
+              等待对手走棋…
             </p>
-          </div>
-          <div>
-            <p className="text-white/40">局面状态</p>
-            <p className={`font-semibold ${statusColor}`}>{outcomeLabel(outcome)}</p>
-          </div>
-          <div>
-            <p className="text-white/40">白方瞬移</p>
-            <p className="font-semibold">{gameState.white_tp_left} 次</p>
-          </div>
-          <div>
-            <p className="text-white/40">黑方瞬移</p>
-            <p className="font-semibold">{gameState.black_tp_left} 次</p>
-          </div>
-        </div>
+          )}
 
-        {!myTurn && canPlay && !gameOver && (
-          <p className="w-full max-w-xl rounded-lg border border-orange-500/30 bg-orange-950/30 px-4 py-2 text-center text-sm text-orange-300">
-            等待对手走棋…
+          {isTouch && canPlay && !gameOver && (
+            <p className="rounded-lg border border-sky-500/25 bg-sky-950/25 px-3 py-2 text-center text-xs text-sky-300 sm:text-sm">
+              触屏：点击选子再点目标格，或长按拖拽走棋
+            </p>
+          )}
+
+          <p className="rounded-lg border border-white/10 bg-black/30 px-3 py-2.5 text-center text-xs text-white/70 sm:text-sm">
+            {message}
           </p>
-        )}
 
-        <div className="relative w-full max-w-xl">
-          <Chessboard options={chessboardOptions} />
-
-          {pendingMove && (
-            <PromotionDialog
-              isWhite={gameState.white_turn}
-              onSelect={handlePromotionSelect}
-              onCancel={() => {
-                setPendingMove(null)
-                setMessage('已取消升变')
-              }}
-            />
-          )}
-
-          {isOnline && roomStatus === 'waiting' && playerColor === 'white' && (
-            <WaitingOverlay roomCode={roomCode!} />
-          )}
-
-          {outcome.status === 'checkmate' && (
-            <GameOverOverlay
-              title="将死 Checkmate"
-              subtitle={`${outcome.winner === 'white' ? '白方' : '黑方'}获胜`}
-              tone="checkmate"
-              onRestart={() => {
-                setGameState(initGame(config))
-                setMessage('本地棋盘已重置（联机需双方重新开局）')
-              }}
-            />
-          )}
-
-          {outcome.status === 'stalemate' && (
-            <GameOverOverlay
-              title="逼和 Stalemate"
-              subtitle="无合法走法且未被将军"
-              tone="stalemate"
-              onRestart={() => {
-                setGameState(initGame(config))
-                setMessage('本地棋盘已重置')
-              }}
-            />
-          )}
-        </div>
-
-        <p className="max-w-xl rounded-lg border border-white/10 bg-black/30 px-4 py-3 text-center text-sm text-white/70">
-          {message}
-        </p>
-
-        <div className="flex flex-wrap justify-center gap-3">
-          <button
-            type="button"
-            disabled={!canPlay || gameOver}
-            onClick={() => {
-              setTeleportMode((prev) => {
-                const next = !prev
-                setSelectedSquare(null)
-                setMessage(next ? '已切换为瞬移模式（点击选子再点目标格）' : '已切换为常规走棋模式')
-                return next
-              })
-            }}
-            className={`rounded-full px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 ${
-              teleportMode
-                ? 'bg-purple-600 text-white shadow-lg shadow-purple-900/40'
-                : 'border border-white/15 bg-white/5 text-white/80 hover:bg-white/10'
-            }`}
-          >
-            {teleportMode ? '⚡ 瞬移模式 ON' : '常规走棋模式'}
-          </button>
-
-          {isOnline && (
+          <div className="mobile-action-bar">
             <button
               type="button"
-              onClick={onLeaveRoom}
-              className="rounded-lg border border-red-500/30 px-5 py-2 text-sm text-red-300 transition hover:bg-red-950/40"
+              disabled={!canPlay || gameOver}
+              onClick={() => {
+                setTeleportMode((prev) => {
+                  const next = !prev
+                  setSelectedSquare(null)
+                  setMessage(
+                    next
+                      ? '瞬移模式：点击己方棋子，再点目标格'
+                      : '常规模式：点击或拖拽走棋',
+                  )
+                  return next
+                })
+              }}
+              className={`min-h-11 flex-1 rounded-full px-4 py-2.5 text-sm font-semibold transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 lg:flex-none ${
+                teleportMode
+                  ? 'bg-purple-600 text-white shadow-lg shadow-purple-900/40'
+                  : 'border border-white/15 bg-white/5 text-white/80 hover:bg-white/10'
+              }`}
             >
-              离开房间
+              {teleportMode ? '⚡ 瞬移 ON' : '常规走棋'}
             </button>
-          )}
-        </div>
-      </section>
 
-      <aside className="lg:sticky lg:top-8">
-        <RuleConfigPanel
-          config={config}
-          onChange={() => {}}
-          readOnly
-          title="本局规则"
-          hint={
-            roomStatus === 'waiting' && playerColor === 'white'
-              ? '等待对手加入，规则已锁定'
-              : '以下规则由房主在创建房间时设定'
-          }
-        />
-      </aside>
+            {isOnline && (
+              <button
+                type="button"
+                onClick={onLeaveRoom}
+                className="min-h-11 flex-1 rounded-lg border border-red-500/30 px-5 py-2.5 text-sm text-red-300 transition hover:bg-red-950/40 lg:flex-none"
+              >
+                离开房间
+              </button>
+            )}
+          </div>
+
+          <RuleConfigPanel
+            config={config}
+            onChange={() => {}}
+            readOnly
+            title="本局规则"
+            hint={
+              roomStatus === 'waiting' && playerColor === 'white'
+                ? '等待对手加入，规则已锁定'
+                : '以下规则由房主在创建房间时设定'
+            }
+          />
+        </aside>
+      </div>
     </main>
   )
 }

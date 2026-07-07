@@ -8,12 +8,12 @@ export default function TutorialModal({ open, onClose }: TutorialModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 backdrop-blur-sm sm:items-center sm:p-4"
       onClick={onClose}
       role="presentation"
     >
       <div
-        className="relative max-h-[85vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-amber-500/20 bg-[#12121c] shadow-2xl"
+        className="relative max-h-[92dvh] w-full max-w-xl overflow-y-auto rounded-t-2xl border border-amber-500/20 bg-[#12121c] shadow-2xl sm:max-h-[85vh] sm:rounded-2xl safe-bottom"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-labelledby="tutorial-title"
@@ -26,7 +26,7 @@ export default function TutorialModal({ open, onClose }: TutorialModalProps) {
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg border border-white/10 px-3 py-1 text-sm text-white/60 hover:bg-white/5"
+              className="min-h-11 min-w-11 rounded-lg border border-white/10 px-3 py-1 text-sm text-white/60 hover:bg-white/5"
             >
               关闭
             </button>

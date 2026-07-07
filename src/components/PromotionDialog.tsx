@@ -26,7 +26,7 @@ export default function PromotionDialog({ isWhite, onSelect, onCancel }: Promoti
               key={piece}
               type="button"
               onClick={() => onSelect(piece)}
-              className="flex flex-col items-center gap-1 rounded-xl border border-white/10 bg-white/5 py-3 transition hover:border-amber-500/60 hover:bg-amber-500/15"
+              className="flex min-h-14 flex-col items-center gap-1 rounded-xl border border-white/10 bg-white/5 py-3 transition active:scale-[0.98] hover:border-amber-500/60 hover:bg-amber-500/15"
             >
               <span className="text-3xl leading-none">{isWhite ? white : black}</span>
               <span className="text-xs text-white/70">{label}</span>
