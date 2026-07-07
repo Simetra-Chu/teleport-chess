@@ -183,7 +183,9 @@ export default function GameView({
         setMessage('等待好友加入…')
         return false
       }
-      if (gameOver || pendingMove) return false
+      if (gameOver) return false
+      // 升变待选时禁止新的选子/走棋（升变确认走 handlePromotionSelect 单独处理）
+      if (pendingMove) return false
 
       const check = checkCanInteract(gameState, playerColor, square, isOnline)
       if (!check.ok) {
@@ -244,8 +246,30 @@ export default function GameView({
 
   const handlePromotionSelect = async (piece: PromoPiece) => {
     if (!pendingMove || pendingMove.kind !== 'normal') return
+    if (gameOver || !canPlay) return
+
     const { fr, fc, tr, tc, fromLabel, toLabel } = pendingMove
-    await tryCommitMove(fr, fc, tr, tc, 'normal', fromLabel, toLabel, piece)
+
+    const check = checkCanInteract(gameState, playerColor, fromLabel, isOnline)
+    if (!check.ok) {
+      setMessage(check.msg!)
+      return
+    }
+
+    const result = checkNormalMoveValid(gameState, config, fr, fc, tr, tc, piece)
+    if (!result.valid) {
+      setMessage(result.msg)
+      setPendingMove(null)
+      return
+    }
+
+    const next = applyNormalMove(gameState, config, fr, fc, tr, tc, piece)
+    await finishMove(
+      next,
+      'normal',
+      { fr, fc, tr, tc, promoPiece: piece },
+      `升变${pieceLabel(piece)}：${fromLabel} → ${toLabel}`,
+    )
   }
 
   const isSelectableSquare = useCallback(
@@ -332,10 +356,16 @@ export default function GameView({
 
       const [fr, fc] = squareToCoord(sourceSquare)
       const [tr, tc] = squareToCoord(targetSquare)
+
+      if (needsPromotionChoice(gameState, config, fr, fc, tr, tc)) {
+        void tryCommitMove(fr, fc, tr, tc, 'normal', sourceSquare, targetSquare)
+        return false
+      }
+
       void tryCommitMove(fr, fc, tr, tc, 'normal', sourceSquare, targetSquare)
       return true
     },
-    [teleportMode, gameOver, pendingMove, guardInteraction, tryCommitMove],
+    [teleportMode, gameOver, pendingMove, guardInteraction, tryCommitMove, gameState, config],
   )
 
   const boardOrientation: 'white' | 'black' = playerColor === 'black' ? 'black' : 'white'
@@ -413,46 +443,56 @@ export default function GameView({
       <div className="game-layout">
         {/* 手机：上方棋盘；桌面：左侧棋盘 */}
         <section className="game-board-column">
-          <div className="chess-board-wrap" ref={boardRef}>
-            <Chessboard options={chessboardOptions} />
+          <div className="chess-board-stack">
+            <div className="chess-board-wrap" ref={boardRef}>
+              <Chessboard options={chessboardOptions} />
+            </div>
 
             {pendingMove && (
-              <PromotionDialog
-                isWhite={gameState.white_turn}
-                onSelect={handlePromotionSelect}
-                onCancel={() => {
-                  setPendingMove(null)
-                  setMessage('已取消升变')
-                }}
-              />
+              <div className="chess-board-overlay">
+                <PromotionDialog
+                  isWhite={gameState.white_turn}
+                  onSelect={handlePromotionSelect}
+                  onCancel={() => {
+                    setPendingMove(null)
+                    setMessage('已取消升变')
+                  }}
+                />
+              </div>
             )}
 
             {isOnline && roomStatus === 'waiting' && playerColor === 'white' && (
-              <WaitingOverlay roomCode={roomCode!} />
+              <div className="chess-board-overlay">
+                <WaitingOverlay roomCode={roomCode!} />
+              </div>
             )}
 
             {outcome.status === 'checkmate' && (
-              <GameOverOverlay
-                title="将死 Checkmate"
-                subtitle={`${outcome.winner === 'white' ? '白方' : '黑方'}获胜`}
-                tone="checkmate"
-                onRestart={() => {
-                  setGameState(initGame(config))
-                  setMessage('本地棋盘已重置（联机需双方重新开局）')
-                }}
-              />
+              <div className="chess-board-overlay">
+                <GameOverOverlay
+                  title="将死 Checkmate"
+                  subtitle={`${outcome.winner === 'white' ? '白方' : '黑方'}获胜`}
+                  tone="checkmate"
+                  onRestart={() => {
+                    setGameState(initGame(config))
+                    setMessage('本地棋盘已重置（联机需双方重新开局）')
+                  }}
+                />
+              </div>
             )}
 
             {outcome.status === 'stalemate' && (
-              <GameOverOverlay
-                title="逼和 Stalemate"
-                subtitle="无合法走法且未被将军"
-                tone="stalemate"
-                onRestart={() => {
-                  setGameState(initGame(config))
-                  setMessage('本地棋盘已重置')
-                }}
-              />
+              <div className="chess-board-overlay">
+                <GameOverOverlay
+                  title="逼和 Stalemate"
+                  subtitle="无合法走法且未被将军"
+                  tone="stalemate"
+                  onRestart={() => {
+                    setGameState(initGame(config))
+                    setMessage('本地棋盘已重置')
+                  }}
+                />
+              </div>
             )}
           </div>
         </section>

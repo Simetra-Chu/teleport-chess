@@ -15,8 +15,8 @@ interface PromotionDialogProps {
 
 export default function PromotionDialog({ isWhite, onSelect, onCancel }: PromotionDialogProps) {
   return (
-    <div className="absolute inset-0 z-20 flex items-center justify-center rounded-[10px] bg-black/65 backdrop-blur-sm">
-      <div className="mx-4 w-full max-w-xs rounded-2xl border border-amber-500/30 bg-[#161622] p-5 shadow-2xl">
+    <div className="flex h-full w-full items-center justify-center rounded-[8px] bg-black/65 backdrop-blur-sm">
+      <div className="mx-3 w-full max-w-xs rounded-2xl border border-amber-500/30 bg-[#161622] p-5 shadow-2xl sm:mx-4">
         <h3 className="text-center text-lg font-bold text-amber-400">兵升变</h3>
         <p className="mt-1 text-center text-xs text-white/50">请选择要升变的棋子</p>
 

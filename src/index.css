@@ -107,6 +107,22 @@ body.is-dragging-piece {
   }
 }
 
+/* 棋盘 + 浮层（升变弹窗等） */
+.chess-board-stack {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  margin-inline: auto;
+}
+
+.chess-board-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  touch-action: auto;
+  pointer-events: auto;
+}
+
 /* ── 棋盘容器：100% 宽、1:1 等比、棋子随格缩放 ── */
 .chess-board-wrap {
   position: relative;
@@ -133,6 +149,7 @@ body.is-dragging-piece {
       max(var(--page-x), env(safe-area-inset-right, 0px));
   }
 
+  .chess-board-stack,
   .chess-board-wrap {
     max-width: min(
       100%,
