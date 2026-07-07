@@ -119,11 +119,11 @@ function Toggle({
 }) {
   return (
     <label
-      className={`flex items-center justify-between gap-3 rounded-lg py-1 ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+      className={`rule-toggle-row ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
     >
-      <div>
-        <span className="block text-sm text-white/85">{label}</span>
-        {hint && <span className="text-xs text-white/40">{hint}</span>}
+      <div className="rule-toggle-text">
+        <span className="block text-sm leading-snug text-white/85">{label}</span>
+        {hint && <span className="mt-0.5 block text-xs leading-relaxed text-white/40">{hint}</span>}
       </div>
       <button
         type="button"
@@ -131,11 +131,9 @@ function Toggle({
         aria-checked={checked}
         disabled={disabled}
         onClick={() => !disabled && onChange(!checked)}
-        className={`relative h-7 w-12 shrink-0 rounded-full transition ${checked ? 'bg-amber-500' : 'bg-white/20'} disabled:cursor-not-allowed`}
+        className={`rule-toggle-track ${checked ? 'is-on' : ''}`}
       >
-        <span
-          className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-white shadow transition ${checked ? 'translate-x-5' : ''}`}
-        />
+        <span className="rule-toggle-thumb" aria-hidden />
       </button>
     </label>
   )
