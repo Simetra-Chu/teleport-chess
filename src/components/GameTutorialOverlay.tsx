@@ -80,7 +80,7 @@ export default function GameTutorialOverlay({
             <h3 className="game-tutorial-title">【核心关键】先激活瞬移模式</h3>
             <p className="game-tutorial-body">
               在瞬移前，请先点击高亮处的
-              <strong>「常规走棋 (开启瞬移)」</strong>
+              <strong>「开启瞬移」</strong>
               按钮，以激活特殊对弈模式！
             </p>
             <p className="game-tutorial-hint">👆 点击上方发光按钮继续教程</p>
@@ -92,7 +92,8 @@ export default function GameTutorialOverlay({
             <p className="game-tutorial-step">步骤 2 / 2</p>
             <h3 className="game-tutorial-title">瞬移已激活！</h3>
             <p className="game-tutorial-body">
-              现在按钮应显示 <strong>「⚡ 瞬移模式 ON」</strong>。接着：
+              激活成功后，按钮会变为紫色高亮的
+              <strong>「瞬移模式 ON」</strong>。接着：
             </p>
             <ol className="game-tutorial-list">
               <li>点击己方棋子（格子变金色）</li>

@@ -71,10 +71,10 @@ export default function TutorialModal({ open, onClose }: TutorialModalProps) {
             <p className="mb-2 text-xs leading-relaxed text-white/70">
               <strong className="text-amber-200">【核心关键】</strong>
               在瞬移前，请先点击对局中的
-              <strong className="text-white/90">「常规走棋 (开启瞬移)」</strong>
-              按钮。按钮会变为
-              <strong className="text-purple-300">「⚡ 瞬移模式 ON」</strong>
-              后，才能进行瞬移！
+              <strong className="text-white/90">「开启瞬移」</strong>
+              按钮。按钮会变为紫色高亮的
+              <strong className="text-purple-300">「瞬移模式 ON」</strong>
+              ，才能进行瞬移！
             </p>
             <p className="text-xs text-white/45">
               对局中点 📖 可打开互动教程，高亮引导你点击该按钮。
@@ -89,10 +89,10 @@ export default function TutorialModal({ open, onClose }: TutorialModalProps) {
             </p>
             <ol className="mb-3 list-inside list-decimal space-y-1 text-xs text-white/70">
               <li>
-                先点 <span className="text-amber-300">「常规走棋 (开启瞬移)」</span> 激活模式
+                先点 <span className="text-amber-300">「开启瞬移」</span> 激活模式
               </li>
               <li>
-                确认按钮显示 <span className="text-purple-300">「⚡ 瞬移模式 ON」</span>
+                确认按钮变为紫色高亮 <span className="text-purple-300">「瞬移模式 ON」</span>
               </li>
               <li>点己方子（金色）→ 点<strong className="text-purple-300">紫色高亮格</strong></li>
             </ol>
@@ -114,9 +114,13 @@ export default function TutorialModal({ open, onClose }: TutorialModalProps) {
 
           {/* 操作提示 */}
           <section className="border-t border-white/8 pt-4 text-xs text-white/45">
-            <p>常规走棋：拖拽，或点击己方子 → 目标格。改选棋子：直接点另一己方子。</p>
+            <p>
+              <strong className="text-white/60">普通走棋（默认）</strong>：不点「开启瞬移」时，拖拽或点击己方子 → 目标格。
+            </p>
             <p className="mt-1">
-              想瞬移？先点 <strong className="text-amber-300/90">常规走棋 (开启瞬移)</strong> 激活模式。
+              <strong className="text-white/60">瞬移走棋</strong>：先点
+              <strong className="text-amber-300/90">「开启瞬移」</strong>
+              → 按钮变为「瞬移模式 ON」→ 点己方子 → 点紫色格。
             </p>
             <p className="mt-1">联机：房主创建房间为白方，好友加入为黑方。</p>
           </section>

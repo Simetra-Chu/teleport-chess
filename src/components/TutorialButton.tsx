@@ -17,7 +17,7 @@ export default function TutorialButton({ onClick, variant = 'header' }: Tutorial
           </span>
           <div>
             <p className="font-semibold text-amber-300 group-hover:text-amber-200">玩法教程 · 新手必看</p>
-            <p className="mt-0.5 text-xs text-white/45">国际象棋基础 + 瞬移规则说明</p>
+            <p className="mt-0.5 text-xs text-white/45">国际象棋基础 + 开启瞬移按钮说明</p>
           </div>
           <span className="ml-auto text-amber-400/60 transition group-hover:translate-x-0.5">→</span>
         </div>
