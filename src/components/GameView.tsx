@@ -29,6 +29,8 @@ import { useIsTouchDevice } from '../hooks/useIsTouchDevice'
 import { useLegalHighlights } from '../hooks/useLegalHighlights'
 import { useBoardTouchGuard } from '../hooks/useBoardTouchGuard'
 import RuleConfigPanel from './RuleConfigPanel'
+import TeleportModeButton from './TeleportModeButton'
+import GameTutorialOverlay from './GameTutorialOverlay'
 import type { PlayerColor, RoomStatus } from '../multiplayer/types'
 
 type PendingMove = {
@@ -51,6 +53,8 @@ interface GameViewProps {
   isOnline: boolean
   onLeaveRoom: () => void
   onOpponentSync: (handler: (event: import('../multiplayer/types').OpponentSyncEvent) => void) => () => void
+  interactiveTutorial?: boolean
+  onTutorialClose?: () => void
 }
 
 export default function GameView({
@@ -63,6 +67,8 @@ export default function GameView({
   isOnline,
   onLeaveRoom,
   onOpponentSync,
+  interactiveTutorial = false,
+  onTutorialClose,
 }: GameViewProps) {
   const [teleportMode, setTeleportMode] = useState(false)
   const [selectedSquare, setSelectedSquare] = useState<string | null>(null)
@@ -78,6 +84,17 @@ export default function GameView({
     document.body.classList.toggle('is-dragging-piece', isDragging)
     return () => document.body.classList.remove('is-dragging-piece')
   }, [isDragging])
+
+  const toggleTeleportMode = useCallback(() => {
+    setTeleportMode((prev) => {
+      const next = !prev
+      setSelectedSquare(null)
+      setMessage(
+        next ? '瞬移模式已激活：点击己方棋子，再点紫色高亮格' : '已切回常规走棋模式',
+      )
+      return next
+    })
+  }, [])
 
   const myTurn = isMyTurn(gameState, playerColor)
   const canPlay = !isOnline || roomStatus === 'playing'
@@ -551,29 +568,11 @@ export default function GameView({
           </p>
 
           <div className="mobile-action-bar">
-            <button
-              type="button"
+            <TeleportModeButton
+              teleportMode={teleportMode}
               disabled={!canPlay || gameOver}
-              onClick={() => {
-                setTeleportMode((prev) => {
-                  const next = !prev
-                  setSelectedSquare(null)
-                  setMessage(
-                    next
-                      ? '瞬移模式：点击己方棋子，再点目标格'
-                      : '常规模式：点击或拖拽走棋',
-                  )
-                  return next
-                })
-              }}
-              className={`min-h-11 flex-1 rounded-full px-4 py-2.5 text-sm font-semibold transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 lg:flex-none ${
-                teleportMode
-                  ? 'bg-purple-600 text-white shadow-lg shadow-purple-900/40'
-                  : 'border border-white/15 bg-white/5 text-white/80 hover:bg-white/10'
-              }`}
-            >
-              {teleportMode ? '⚡ 瞬移 ON' : '常规走棋'}
-            </button>
+              onToggle={toggleTeleportMode}
+            />
 
             {isOnline && (
               <button
@@ -599,6 +598,12 @@ export default function GameView({
           />
         </aside>
       </div>
+
+      <GameTutorialOverlay
+        open={interactiveTutorial}
+        teleportMode={teleportMode}
+        onClose={() => onTutorialClose?.()}
+      />
     </main>
   )
 }

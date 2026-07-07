@@ -66,14 +66,34 @@ export default function TutorialModal({ open, onClose }: TutorialModalProps) {
           </section>
 
           {/* 瞬移 - 重点 */}
+          <section className="rounded-xl border border-amber-500/30 bg-amber-950/15 p-4">
+            <h3 className="mb-2 text-sm font-bold text-amber-300">二、激活瞬移模式（必看）</h3>
+            <p className="mb-2 text-xs leading-relaxed text-white/70">
+              <strong className="text-amber-200">【核心关键】</strong>
+              在瞬移前，请先点击对局中的
+              <strong className="text-white/90">「常规走棋 (开启瞬移)」</strong>
+              按钮。按钮会变为
+              <strong className="text-purple-300">「⚡ 瞬移模式 ON」</strong>
+              后，才能进行瞬移！
+            </p>
+            <p className="text-xs text-white/45">
+              对局中点 📖 可打开互动教程，高亮引导你点击该按钮。
+            </p>
+          </section>
+
           <section className="rounded-xl border border-purple-500/25 bg-purple-950/20 p-4">
-            <h3 className="mb-2 text-sm font-bold text-purple-300">二、瞬移（本游戏核心）</h3>
+            <h3 className="mb-2 text-sm font-bold text-purple-300">三、瞬移走法（本游戏核心）</h3>
             <p className="mb-3 text-xs leading-relaxed text-white/65">
               瞬移让棋子<strong className="text-white/85">无视常规走法</strong>，直接跳到另一格（受规则限制）。
               每用一次消耗 1 次瞬移机会，然后换手。
             </p>
             <ol className="mb-3 list-inside list-decimal space-y-1 text-xs text-white/70">
-              <li>点 <span className="text-purple-300">「⚡ 瞬移模式 ON」</span></li>
+              <li>
+                先点 <span className="text-amber-300">「常规走棋 (开启瞬移)」</span> 激活模式
+              </li>
+              <li>
+                确认按钮显示 <span className="text-purple-300">「⚡ 瞬移模式 ON」</span>
+              </li>
               <li>点己方子（金色）→ 点<strong className="text-purple-300">紫色高亮格</strong></li>
             </ol>
             <p className="text-xs text-amber-400/80">硬性限制：瞬移后己方不能处于被将军；永远不能移动到王上（含吃王）。</p>
@@ -81,7 +101,7 @@ export default function TutorialModal({ open, onClose }: TutorialModalProps) {
 
           {/* 瞬移规则配置 */}
           <section>
-            <h3 className="mb-2 text-sm font-bold text-white/90">三、瞬移规则（房主可配）</h3>
+            <h3 className="mb-2 text-sm font-bold text-white/90">四、瞬移规则（房主可配）</h3>
             <dl className="space-y-2 text-xs">
               <RuleRow term="瞬移次数" def="每方整局可用几次，用完只能常规走棋。" />
               <RuleRow term="任意棋子" def="关 = 仅皇后可瞬移。" />
@@ -95,6 +115,9 @@ export default function TutorialModal({ open, onClose }: TutorialModalProps) {
           {/* 操作提示 */}
           <section className="border-t border-white/8 pt-4 text-xs text-white/45">
             <p>常规走棋：拖拽，或点击己方子 → 目标格。改选棋子：直接点另一己方子。</p>
+            <p className="mt-1">
+              想瞬移？先点 <strong className="text-amber-300/90">常规走棋 (开启瞬移)</strong> 激活模式。
+            </p>
             <p className="mt-1">联机：房主创建房间为白方，好友加入为黑方。</p>
           </section>
         </div>

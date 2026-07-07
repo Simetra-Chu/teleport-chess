@@ -55,7 +55,10 @@ export default function App() {
         </div>
       </header>
 
-      <TutorialModal open={tutorialOpen} onClose={() => setTutorialOpen(false)} />
+      <TutorialModal
+        open={tutorialOpen && mp.phase === 'lobby'}
+        onClose={() => setTutorialOpen(false)}
+      />
 
       {mp.phase === 'room' && (
         <TutorialButton onClick={() => setTutorialOpen(true)} variant="float" />
@@ -84,6 +87,8 @@ export default function App() {
           isOnline={mp.isOnline}
           onLeaveRoom={mp.leaveRoom}
           onOpponentSync={mp.onOpponentSync}
+          interactiveTutorial={tutorialOpen}
+          onTutorialClose={() => setTutorialOpen(false)}
         />
       )}
     </div>
