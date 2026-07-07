@@ -23,7 +23,6 @@ const corsOrigin = (() => {
  * @property {number} each_side_tp_times
  * @property {boolean} tp_any_piece
  * @property {boolean} tp_cannot_capture
- * @property {boolean} tp_cannot_capture_own
  * @property {boolean} tp_cannot_check
  * @property {boolean} pawn_tp_no_promote
  */
@@ -49,7 +48,6 @@ const DEFAULT_CONFIG = {
   each_side_tp_times: 1,
   tp_any_piece: true,
   tp_cannot_capture: true,
-  tp_cannot_capture_own: true,
   tp_cannot_check: true,
   pawn_tp_no_promote: true,
 }

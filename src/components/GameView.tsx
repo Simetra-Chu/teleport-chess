@@ -189,6 +189,11 @@ export default function GameView({
         setMessage(sync.error || '同步失败，已撤销本步')
         return false
       }
+
+      if (kind === 'teleport') {
+        setTeleportMode(false)
+        setMessage((prev) => (prev.includes('已切回普通走棋') ? prev : `${prev} · 已切回普通走棋`))
+      }
       return true
     },
     [gameState, syncToServer, applyLocalOutcome, setGameState],

@@ -52,13 +52,6 @@ export default function RuleConfigPanel({
           onChange={(v) => onChange({ tp_cannot_capture: v })}
         />
         <Toggle
-          label="禁止瞬移吃己方子"
-          hint={config.tp_cannot_capture ? '需先关闭「禁止瞬移吃子」' : '关闭后可覆盖己方棋子'}
-          checked={config.tp_cannot_capture_own}
-          disabled={locked || config.tp_cannot_capture}
-          onChange={(v) => onChange({ tp_cannot_capture_own: v })}
-        />
-        <Toggle
           label="禁止瞬移将军"
           checked={config.tp_cannot_check}
           disabled={locked}
@@ -80,7 +73,6 @@ export default function RuleConfigPanel({
                 each_side_tp_times: 1,
                 tp_any_piece: true,
                 tp_cannot_capture: true,
-                tp_cannot_capture_own: true,
                 tp_cannot_check: true,
                 pawn_tp_no_promote: true,
               })

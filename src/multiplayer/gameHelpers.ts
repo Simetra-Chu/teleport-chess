@@ -50,7 +50,6 @@ export const DEFAULT_CONFIG: TeleportConfig = {
   each_side_tp_times: 1,
   tp_any_piece: true,
   tp_cannot_capture: true,
-  tp_cannot_capture_own: true,
   tp_cannot_check: true,
   pawn_tp_no_promote: true,
 }

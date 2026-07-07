@@ -105,8 +105,7 @@ export default function TutorialModal({ open, onClose }: TutorialModalProps) {
             <dl className="space-y-2 text-xs">
               <RuleRow term="瞬移次数" def="每方整局可用几次，用完只能常规走棋。" />
               <RuleRow term="任意棋子" def="关 = 仅皇后可瞬移。" />
-              <RuleRow term="禁止吃子" def="开 = 只能跳到空格；关 = 可吃子（不能吃王）。" />
-              <RuleRow term="禁止吃己方" def="在允许吃子时，能否覆盖己方子。" />
+              <RuleRow term="禁止吃子" def="开 = 只能跳到空格；关 = 可吃敌方子（不能吃王，且永远不能覆盖己方棋子）。" />
               <RuleRow term="禁止将军" def="开 = 瞬移后不能直接将军对方。" />
               <RuleRow term="兵禁升变" def="开 = 瞬移过的兵到底线不能升变。" />
             </dl>

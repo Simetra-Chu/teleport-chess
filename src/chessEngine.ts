@@ -8,8 +8,7 @@ export type Coord = [number, number]; // [row, col]
 export interface TeleportConfig {
   each_side_tp_times: number;   // 每方瞬移次数限制
   tp_any_piece: boolean;        // true=任意棋子瞬移；false=仅皇后瞬移
-  tp_cannot_capture: boolean;   // 瞬移是否禁止吃子（含己方与敌方）
-  tp_cannot_capture_own: boolean; // 瞬移是否禁止吃掉己方棋子（tp_cannot_capture 为 false 时生效）
+  tp_cannot_capture: boolean;   // 瞬移是否禁止吃子（仅指敌方；己方棋子永远不可覆盖）
   tp_cannot_check: boolean;     // 瞬移是否禁止直接将军对方
   pawn_tp_no_promote: boolean;  // 瞬移过的兵是否无法升变
 }
@@ -193,19 +192,9 @@ export function checkTeleportValid(
     return { valid: false, msg: "不能瞬移吃掉对方的王，请通过将死取胜" };
   }
 
-  // 禁止吃掉己方棋子（在允许瞬移吃敌方时单独控制）
-  if (
-    !config.tp_cannot_capture &&
-    config.tp_cannot_capture_own &&
-    isOwnPieceAt(board, tr, tc, state.white_turn)
-  ) {
-    return { valid: false, msg: "规则禁止瞬移吃掉己方棋子" };
-  }
-
-  // 己方王格永远不可作为瞬移落点
-  const targetPiece = board[tr][tc];
-  if (targetPiece !== "." && targetPiece.toUpperCase() === "K" && isOwnPieceAt(board, tr, tc, state.white_turn)) {
-    return { valid: false, msg: "不能瞬移到自己的王上" };
+  // 硬编码：永远不能移动到己方棋子上（含吃己方）
+  if (isOwnPieceAt(board, tr, tc, state.white_turn)) {
+    return { valid: false, msg: "不能移动到己方棋子上" };
   }
 
   // 仅限皇后限制

@@ -5,6 +5,7 @@ import {
   inCheck,
   isBlack,
   isEnemyKing,
+  isOwnPieceAt,
   isWhite,
 } from './chessEngine'
 import { cloneState } from './boardUtils'
@@ -225,6 +226,11 @@ export function checkNormalMoveValid(
 
   if (isEnemyKing(state.board, tr, tc, state.white_turn)) {
     return { valid: false, msg: '不能吃对方的王' }
+  }
+
+  // 硬编码：永远不能移动到己方棋子上
+  if (isOwnPieceAt(state.board, tr, tc, state.white_turn)) {
+    return { valid: false, msg: '不能移动到己方棋子上' }
   }
 
   const targets = getPseudoLegalTargets(state, fr, fc)
