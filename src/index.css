@@ -265,3 +265,40 @@ body.is-dragging-piece {
     min-height: 44px;
   }
 }
+
+/* 大厅：加入房间行，防止按钮溢出 */
+.join-room-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.5rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.join-room-input {
+  width: 100%;
+  min-width: 0;
+}
+
+.join-room-btn {
+  min-width: 4.25rem;
+}
+
+/* 规则面板：瞬移次数输入框左对齐、拉宽 */
+.rule-number-input {
+  width: 100%;
+  text-align: left;
+  -moz-appearance: textfield;
+}
+
+.rule-number-input::-webkit-outer-spin-button,
+.rule-number-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+@media (min-width: 640px) {
+  .rule-number-input {
+    max-width: 14rem;
+  }
+}

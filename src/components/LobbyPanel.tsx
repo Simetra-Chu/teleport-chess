@@ -29,7 +29,7 @@ export default function LobbyPanel({
     <div className="lobby-page">
       <div className="lobby-layout">
         {/* 手机：上方创建/加入；桌面：左侧 */}
-        <div className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-white/10 bg-[#12121c] shadow-2xl shadow-black/50">
+        <div className="relative w-full min-w-0 max-w-lg overflow-x-hidden rounded-3xl border border-white/10 bg-[#12121c] shadow-2xl shadow-black/50">
           <div className="pointer-events-none absolute -top-24 -right-24 h-48 w-48 rounded-full bg-amber-500/10 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-16 -left-16 h-40 w-40 rounded-full bg-purple-600/10 blur-3xl" />
 
@@ -69,7 +69,7 @@ export default function LobbyPanel({
             <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
               <h3 className="text-sm font-semibold text-white/85">加入已有房间</h3>
               <p className="mt-1 text-xs text-white/45">输入好友分享的 4 位数字房间号（加入后为黑方）</p>
-              <div className="mt-4 flex gap-2">
+              <div className="join-room-row mt-4">
                 <input
                   type="text"
                   inputMode="numeric"
@@ -77,13 +77,13 @@ export default function LobbyPanel({
                   placeholder="例如 4829"
                   value={joinInput}
                   onChange={(e) => onJoinInputChange(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                  className="min-h-11 flex-1 rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-center text-lg tracking-[0.3em] outline-none focus:border-purple-500/50"
+                  className="join-room-input min-h-11 rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-center text-lg tracking-[0.2em] outline-none focus:border-purple-500/50"
                 />
                 <button
                   type="button"
                   disabled={loading || joinInput.length !== 4}
                   onClick={onJoinRoom}
-                  className="min-h-11 rounded-xl bg-purple-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-purple-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+                  className="join-room-btn min-h-11 shrink-0 rounded-xl bg-purple-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-purple-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   加入
                 </button>

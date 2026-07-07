@@ -33,7 +33,7 @@ export default function RuleConfigPanel({
             disabled={locked}
             value={config.each_side_tp_times}
             onChange={(e) => onChange({ each_side_tp_times: Number(e.target.value) })}
-            className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none focus:border-amber-500/60 disabled:opacity-50"
+            className="rule-number-input w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2.5 text-left text-base outline-none focus:border-amber-500/60 disabled:opacity-50"
           />
         </Field>
 
@@ -85,7 +85,7 @@ export default function RuleConfigPanel({
                 pawn_tp_no_promote: true,
               })
             }
-            className="w-full rounded-lg border border-white/10 py-2 text-xs text-white/60 transition hover:bg-white/5 disabled:opacity-40"
+            className="w-full rounded-xl border border-white/10 py-2.5 text-left text-xs text-white/60 transition hover:bg-white/5 disabled:opacity-40"
           >
             恢复默认规则
           </button>
@@ -97,7 +97,7 @@ export default function RuleConfigPanel({
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label className="block space-y-1.5">
+    <label className="block space-y-2 text-left">
       <span className="text-sm font-medium text-white/80">{label}</span>
       {children}
     </label>
