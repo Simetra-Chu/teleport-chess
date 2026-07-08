@@ -4,9 +4,14 @@ import { emitAck, getSocket } from './socket'
 import { DEFAULT_CONFIG } from './gameHelpers'
 import type {
   CreateRoomAck,
+  GameEndEvent,
+  GameResult,
   JoinRoomAck,
+  OpponentRequestEvent,
+  OpponentRequestType,
   OpponentSyncEvent,
   PlayerColor,
+  RequestRespondedEvent,
   RoomStatus,
 } from './types'
 
@@ -21,11 +26,22 @@ export interface MultiplayerState {
   gameState: GameState
   joinInput: string
   loading: boolean
+  gameResult: GameResult | null
+  canUndo: boolean
+  pendingOpponentRequest: OpponentRequestEvent | null
+  pendingMyRequest: OpponentRequestType | null
+  requestNotice: string | null
   setJoinInput: (v: string) => void
   setConfig: React.Dispatch<React.SetStateAction<TeleportConfig>>
   createRoom: () => Promise<void>
   joinRoom: () => Promise<void>
   leaveRoom: () => void
+  resign: () => Promise<void>
+  requestUndo: () => Promise<void>
+  requestRestart: () => Promise<void>
+  respondToRequest: (accept: boolean) => Promise<void>
+  clearRequestNotice: () => void
+  markCanUndo: () => void
   isOnline: boolean
   isMyTurn: boolean
   setGameState: React.Dispatch<React.SetStateAction<GameState>>
@@ -43,6 +59,13 @@ export function useMultiplayer(): MultiplayerState & {
   const [gameState, setGameState] = useState<GameState>(() => initGame(DEFAULT_CONFIG))
   const [joinInput, setJoinInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [gameResult, setGameResult] = useState<GameResult | null>(null)
+  const [canUndo, setCanUndo] = useState(false)
+  const [pendingOpponentRequest, setPendingOpponentRequest] = useState<OpponentRequestEvent | null>(
+    null,
+  )
+  const [pendingMyRequest, setPendingMyRequest] = useState<OpponentRequestType | null>(null)
+  const [requestNotice, setRequestNotice] = useState<string | null>(null)
 
   const resetToLobby = useCallback((msg?: string) => {
     setPhase('lobby')
@@ -52,6 +75,11 @@ export function useMultiplayer(): MultiplayerState & {
     setConfig(DEFAULT_CONFIG)
     setGameState(initGame(DEFAULT_CONFIG))
     setJoinInput('')
+    setGameResult(null)
+    setCanUndo(false)
+    setPendingOpponentRequest(null)
+    setPendingMyRequest(null)
+    setRequestNotice(null)
     if (msg) console.info(msg)
   }, [])
 
@@ -63,6 +91,11 @@ export function useMultiplayer(): MultiplayerState & {
       setConfig(cfg)
       setGameState(state)
       setRoomStatus(status)
+      setGameResult(null)
+      setCanUndo(false)
+      setPendingOpponentRequest(null)
+      setPendingMyRequest(null)
+      setRequestNotice(null)
     },
     [],
   )
@@ -81,24 +114,62 @@ export function useMultiplayer(): MultiplayerState & {
       setPlayerColor(data.color)
       setGameState(data.gameState)
       setConfig(data.config)
+      setCanUndo(false)
+      setPendingMyRequest(null)
+      setPendingOpponentRequest(null)
     }
 
     const onOpponentLeft = () => {
       setRoomStatus('waiting')
+      setPendingOpponentRequest(null)
+      setPendingMyRequest(null)
+      setGameResult(null)
     }
 
     const onRoomClosed = () => {
       resetToLobby()
     }
 
+    const onGameEnded = (data: GameEndEvent) => {
+      setRoomStatus('finished')
+      setGameResult({ reason: 'resign', winner: data.winner })
+      setPendingOpponentRequest(null)
+      setPendingMyRequest(null)
+    }
+
+    const onOpponentRequest = (data: OpponentRequestEvent) => {
+      setPendingOpponentRequest(data)
+    }
+
+    const onRequestResponded = (data: RequestRespondedEvent) => {
+      setPendingMyRequest(null)
+      setPendingOpponentRequest(null)
+
+      if (data.accept && data.gameState) {
+        setGameState(data.gameState)
+        setCanUndo(false)
+        setRoomStatus('playing')
+        setGameResult(null)
+        setRequestNotice(data.type === 'undo' ? '悔棋已生效' : '棋局已重新开始')
+      } else if (!data.accept) {
+        setRequestNotice(data.type === 'undo' ? '对手拒绝了悔棋请求' : '对手拒绝了重开请求')
+      }
+    }
+
     socket.on('opponentJoined', onOpponentJoined)
     socket.on('opponentLeft', onOpponentLeft)
     socket.on('roomClosed', onRoomClosed)
+    socket.on('gameEnded', onGameEnded)
+    socket.on('opponentRequest', onOpponentRequest)
+    socket.on('requestResponded', onRequestResponded)
 
     return () => {
       socket.off('opponentJoined', onOpponentJoined)
       socket.off('opponentLeft', onOpponentLeft)
       socket.off('roomClosed', onRoomClosed)
+      socket.off('gameEnded', onGameEnded)
+      socket.off('opponentRequest', onOpponentRequest)
+      socket.off('requestResponded', onRequestResponded)
     }
   }, [resetToLobby])
 
@@ -137,10 +208,51 @@ export function useMultiplayer(): MultiplayerState & {
     resetToLobby()
   }, [resetToLobby])
 
+  const resign = useCallback(async () => {
+    const res = await emitAck<GameEndEvent & { ok: boolean; error?: string }>('resign')
+    if (!res.ok) throw new Error(res.error || '认输失败')
+    setRoomStatus('finished')
+    if (res.winner) setGameResult({ reason: 'resign', winner: res.winner })
+  }, [])
+
+  const requestUndo = useCallback(async () => {
+    const res = await emitAck<{ ok: boolean; error?: string }>('requestUndo')
+    if (!res.ok) throw new Error(res.error || '请求悔棋失败')
+    setPendingMyRequest('undo')
+    setRequestNotice(null)
+  }, [])
+
+  const requestRestart = useCallback(async () => {
+    const res = await emitAck<{ ok: boolean; error?: string }>('requestRestart')
+    if (!res.ok) throw new Error(res.error || '请求重开失败')
+    setPendingMyRequest('restart')
+    setRequestNotice(null)
+  }, [])
+
+  const respondToRequest = useCallback(async (accept: boolean) => {
+    if (!pendingOpponentRequest) return
+    const res = await emitAck<RequestRespondedEvent & { ok: boolean; error?: string }>(
+      'respondRequest',
+      { accept },
+    )
+    if (!res.ok) throw new Error(res.error || '回应失败')
+    setPendingOpponentRequest(null)
+  }, [pendingOpponentRequest])
+
+  const clearRequestNotice = useCallback(() => setRequestNotice(null), [])
+
+  const markCanUndo = useCallback(() => setCanUndo(true), [])
+
   const onOpponentSync = useCallback((handler: (event: OpponentSyncEvent) => void) => {
     const socket = getSocket()
-    const onMove = (event: OpponentSyncEvent) => handler(event)
-    const onTeleport = (event: OpponentSyncEvent) => handler(event)
+    const onMove = (event: OpponentSyncEvent) => {
+      setCanUndo(true)
+      handler(event)
+    }
+    const onTeleport = (event: OpponentSyncEvent) => {
+      setCanUndo(true)
+      handler(event)
+    }
     socket.on('move', onMove)
     socket.on('teleport', onTeleport)
     return () => {
@@ -168,11 +280,22 @@ export function useMultiplayer(): MultiplayerState & {
     gameState,
     joinInput,
     loading,
+    gameResult,
+    canUndo,
+    pendingOpponentRequest,
+    pendingMyRequest,
+    requestNotice,
     setJoinInput,
     setConfig,
     createRoom,
     joinRoom,
     leaveRoom,
+    resign,
+    requestUndo,
+    requestRestart,
+    respondToRequest,
+    clearRequestNotice,
+    markCanUndo,
     isOnline,
     isMyTurn,
     setGameState,

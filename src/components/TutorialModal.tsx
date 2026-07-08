@@ -114,7 +114,7 @@ export default function TutorialModal({ open, onClose }: TutorialModalProps) {
           {/* 操作提示 */}
           <section className="border-t border-white/8 pt-4 text-xs text-white/45">
             <p>
-              <strong className="text-white/60">普通走棋（默认）</strong>：不点「开启瞬移」时，拖拽或点击己方子 → 目标格。
+              <strong className="text-white/60">普通走棋（默认）</strong>：不点「开启瞬移」时，点击己方子 → 目标格。
             </p>
             <p className="mt-1">
               <strong className="text-white/60">瞬移走棋</strong>：先点

@@ -5,7 +5,35 @@ export const SERVER_URL = BACKEND_URL
 
 export type PlayerColor = 'white' | 'black'
 
-export type RoomStatus = 'waiting' | 'playing'
+export type RoomStatus = 'waiting' | 'playing' | 'finished'
+
+export type OpponentRequestType = 'undo' | 'restart'
+
+export interface GameEndEvent {
+  roomCode: string
+  reason: 'resign'
+  winner: PlayerColor
+  loser: PlayerColor
+}
+
+export interface OpponentRequestEvent {
+  roomCode: string
+  type: OpponentRequestType
+  from: PlayerColor
+}
+
+export interface RequestRespondedEvent {
+  roomCode: string
+  type: OpponentRequestType
+  accept: boolean
+  by: PlayerColor
+  gameState?: import('../chessEngine').GameState
+}
+
+export interface GameResult {
+  reason: 'resign'
+  winner: PlayerColor
+}
 
 export interface RoomAckBase {
   ok: boolean

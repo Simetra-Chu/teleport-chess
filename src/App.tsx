@@ -37,7 +37,13 @@ export default function App() {
             <p className="truncate text-[11px] text-white/45 sm:text-xs">
               {mp.phase === 'lobby'
                 ? '联机对战 · 创建或加入房间'
-                : `房间 ${mp.roomCode} · ${mp.roomStatus === 'waiting' ? '等待对手' : '在线对战中'}`}
+                : `房间 ${mp.roomCode} · ${
+                    mp.roomStatus === 'waiting'
+                      ? '等待对手'
+                      : mp.roomStatus === 'finished'
+                        ? '对局已结束'
+                        : '在线对战中'
+                  }`}
             </p>
           </div>
 
@@ -89,6 +95,17 @@ export default function App() {
           onOpponentSync={mp.onOpponentSync}
           interactiveTutorial={tutorialOpen}
           onTutorialClose={() => setTutorialOpen(false)}
+          gameResult={mp.gameResult}
+          canUndo={mp.canUndo}
+          pendingOpponentRequest={mp.pendingOpponentRequest}
+          pendingMyRequest={mp.pendingMyRequest}
+          requestNotice={mp.requestNotice}
+          onResign={mp.resign}
+          onRequestUndo={mp.requestUndo}
+          onRequestRestart={mp.requestRestart}
+          onRespondToRequest={mp.respondToRequest}
+          onClearRequestNotice={mp.clearRequestNotice}
+          onMoveSynced={mp.markCanUndo}
         />
       )}
     </div>

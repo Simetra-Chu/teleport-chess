@@ -115,6 +115,11 @@ function assertTurnAdvanced(prev, next, mover) {
   }
 }
 
+/** @param {GameState} state */
+function cloneGameState(state) {
+  return JSON.parse(JSON.stringify(state))
+}
+
 /** @param {Function} ack @param {object} payload */
 function reply(ack, payload) {
   if (typeof ack === 'function') ack(payload)
@@ -163,6 +168,8 @@ io.on('connection', (socket) => {
         guestId: null,
         config,
         gameState,
+        previousGameState: null,
+        pendingRequest: null,
         status: 'waiting',
       }
 
@@ -240,6 +247,7 @@ io.on('connection', (socket) => {
       const room = getRoomForSocket(socket.id)
       const color = getPlayerColor(room, socket.id)
       if (!color) throw new Error('你不在这个房间')
+      if (room.status === 'finished') throw new Error('对局已结束')
       if (room.status !== 'playing') throw new Error('对局尚未开始')
 
       const { gameState, move } = payload
@@ -247,6 +255,8 @@ io.on('connection', (socket) => {
 
       assertTurnAdvanced(room.gameState, gameState, color)
 
+      room.previousGameState = cloneGameState(room.gameState)
+      room.pendingRequest = null
       room.gameState = gameState
 
       const event = {
@@ -276,6 +286,7 @@ io.on('connection', (socket) => {
       const room = getRoomForSocket(socket.id)
       const color = getPlayerColor(room, socket.id)
       if (!color) throw new Error('你不在这个房间')
+      if (room.status === 'finished') throw new Error('对局已结束')
       if (room.status !== 'playing') throw new Error('对局尚未开始')
 
       const { gameState, move } = payload
@@ -283,6 +294,8 @@ io.on('connection', (socket) => {
 
       assertTurnAdvanced(room.gameState, gameState, color)
 
+      room.previousGameState = cloneGameState(room.gameState)
+      room.pendingRequest = null
       room.gameState = gameState
 
       const event = {
@@ -304,6 +317,117 @@ io.on('connection', (socket) => {
   socket.on('leaveRoom', (_payload, ack) => {
     leaveRoom(socket)
     reply(ack, { ok: true })
+  })
+
+  socket.on('resign', (_payload, ack) => {
+    try {
+      const room = getRoomForSocket(socket.id)
+      const color = getPlayerColor(room, socket.id)
+      if (!color) throw new Error('你不在这个房间')
+      if (room.status !== 'playing') throw new Error('对局未进行中')
+
+      const winner = color === 'white' ? 'black' : 'white'
+      room.status = 'finished'
+      room.pendingRequest = null
+
+      const event = {
+        roomCode: room.code,
+        reason: 'resign',
+        winner,
+        loser: color,
+      }
+
+      io.to(room.code).emit('gameEnded', event)
+      reply(ack, { ok: true, ...event })
+      console.log(`[resign] room ${room.code} ${color} -> ${winner} wins`)
+    } catch (err) {
+      reply(ack, { ok: false, error: err.message || '认输失败' })
+    }
+  })
+
+  socket.on('requestUndo', (_payload, ack) => {
+    try {
+      const room = getRoomForSocket(socket.id)
+      const color = getPlayerColor(room, socket.id)
+      if (!color) throw new Error('你不在这个房间')
+      if (room.status !== 'playing') throw new Error('对局未进行中')
+      if (!room.previousGameState) throw new Error('当前没有可悔棋的步数')
+      if (room.pendingRequest) throw new Error('已有待处理的请求')
+
+      room.pendingRequest = { type: 'undo', from: color }
+      socket.to(room.code).emit('opponentRequest', {
+        roomCode: room.code,
+        type: 'undo',
+        from: color,
+      })
+      reply(ack, { ok: true })
+      console.log(`[requestUndo] room ${room.code} from ${color}`)
+    } catch (err) {
+      reply(ack, { ok: false, error: err.message || '请求悔棋失败' })
+    }
+  })
+
+  socket.on('requestRestart', (_payload, ack) => {
+    try {
+      const room = getRoomForSocket(socket.id)
+      const color = getPlayerColor(room, socket.id)
+      if (!color) throw new Error('你不在这个房间')
+      if (room.status !== 'playing') throw new Error('对局未进行中')
+      if (room.pendingRequest) throw new Error('已有待处理的请求')
+
+      room.pendingRequest = { type: 'restart', from: color }
+      socket.to(room.code).emit('opponentRequest', {
+        roomCode: room.code,
+        type: 'restart',
+        from: color,
+      })
+      reply(ack, { ok: true })
+      console.log(`[requestRestart] room ${room.code} from ${color}`)
+    } catch (err) {
+      reply(ack, { ok: false, error: err.message || '请求重开失败' })
+    }
+  })
+
+  socket.on('respondRequest', (payload = {}, ack) => {
+    try {
+      const room = getRoomForSocket(socket.id)
+      const color = getPlayerColor(room, socket.id)
+      if (!color) throw new Error('你不在这个房间')
+      if (room.status !== 'playing') throw new Error('对局未进行中')
+
+      const pending = room.pendingRequest
+      if (!pending) throw new Error('没有待处理的请求')
+      if (pending.from === color) throw new Error('不能回应自己的请求')
+
+      const accept = Boolean(payload.accept)
+      const responded = {
+        roomCode: room.code,
+        type: pending.type,
+        accept,
+        by: color,
+      }
+
+      room.pendingRequest = null
+
+      if (accept) {
+        if (pending.type === 'undo') {
+          if (!room.previousGameState) throw new Error('无法悔棋')
+          room.gameState = cloneGameState(room.previousGameState)
+          room.previousGameState = null
+          responded.gameState = room.gameState
+        } else {
+          room.gameState = createInitialGameState(room.config)
+          room.previousGameState = null
+          responded.gameState = room.gameState
+        }
+      }
+
+      io.to(room.code).emit('requestResponded', responded)
+      reply(ack, { ok: true, ...responded })
+      console.log(`[respondRequest] room ${room.code} ${pending.type} accept=${accept}`)
+    } catch (err) {
+      reply(ack, { ok: false, error: err.message || '回应请求失败' })
+    }
   })
 
   socket.on('disconnect', () => {

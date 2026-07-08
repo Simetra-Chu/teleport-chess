@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Chessboard } from 'react-chessboard'
 import PromotionDialog from './PromotionDialog'
 import {
@@ -27,11 +27,12 @@ import {
 import { emitAck } from '../multiplayer/socket'
 import { useIsTouchDevice } from '../hooks/useIsTouchDevice'
 import { useLegalHighlights } from '../hooks/useLegalHighlights'
-import { useBoardTouchGuard } from '../hooks/useBoardTouchGuard'
 import RuleConfigPanel from './RuleConfigPanel'
 import TeleportModeButton from './TeleportModeButton'
 import GameTutorialOverlay from './GameTutorialOverlay'
-import type { PlayerColor, RoomStatus } from '../multiplayer/types'
+import GameControlBar from './GameControlBar'
+import OpponentRequestDialog from './OpponentRequestDialog'
+import type { GameResult, OpponentRequestEvent, OpponentRequestType, PlayerColor, RoomStatus } from '../multiplayer/types'
 
 type PendingMove = {
   fr: number
@@ -55,6 +56,17 @@ interface GameViewProps {
   onOpponentSync: (handler: (event: import('../multiplayer/types').OpponentSyncEvent) => void) => () => void
   interactiveTutorial?: boolean
   onTutorialClose?: () => void
+  gameResult?: GameResult | null
+  canUndo?: boolean
+  pendingOpponentRequest?: OpponentRequestEvent | null
+  pendingMyRequest?: OpponentRequestType | null
+  requestNotice?: string | null
+  onResign?: () => Promise<void>
+  onRequestUndo?: () => Promise<void>
+  onRequestRestart?: () => Promise<void>
+  onRespondToRequest?: (accept: boolean) => Promise<void>
+  onClearRequestNotice?: () => void
+  onMoveSynced?: () => void
 }
 
 export default function GameView({
@@ -69,21 +81,24 @@ export default function GameView({
   onOpponentSync,
   interactiveTutorial = false,
   onTutorialClose,
+  gameResult = null,
+  canUndo = false,
+  pendingOpponentRequest = null,
+  pendingMyRequest = null,
+  requestNotice = null,
+  onResign,
+  onRequestUndo,
+  onRequestRestart,
+  onRespondToRequest,
+  onClearRequestNotice,
+  onMoveSynced,
 }: GameViewProps) {
   const [teleportMode, setTeleportMode] = useState(false)
   const [selectedSquare, setSelectedSquare] = useState<string | null>(null)
   const [pendingMove, setPendingMove] = useState<PendingMove | null>(null)
-  const [message, setMessage] = useState('点击或拖拽己方棋子走棋')
-  const [isDragging, setIsDragging] = useState(false)
-  const boardRef = useRef<HTMLDivElement>(null)
+  const [message, setMessage] = useState('点击己方棋子，再点目标格走棋')
 
   const isTouch = useIsTouchDevice()
-  useBoardTouchGuard(boardRef, isTouch)
-
-  useEffect(() => {
-    document.body.classList.toggle('is-dragging-piece', isDragging)
-    return () => document.body.classList.remove('is-dragging-piece')
-  }, [isDragging])
 
   const toggleTeleportMode = useCallback(() => {
     setTeleportMode((prev) => {
@@ -98,9 +113,10 @@ export default function GameView({
 
   const myTurn = isMyTurn(gameState, playerColor)
   const canPlay = !isOnline || roomStatus === 'playing'
+  const resigned = gameResult?.reason === 'resign'
   const fen = useMemo(() => boardToFen(gameState), [gameState])
   const outcome = useMemo(() => getGameOutcome(gameState, config), [gameState, config])
-  const gameOver = outcome.status !== 'ongoing'
+  const gameOver = outcome.status !== 'ongoing' || resigned
 
   useEffect(() => {
     if (!isOnline) return
@@ -122,6 +138,20 @@ export default function GameView({
       setMessage(`对局开始！你执${colorLabel(playerColor)}`)
     }
   }, [isOnline, roomStatus, playerColor])
+
+  useEffect(() => {
+    if (requestNotice) {
+      setMessage(requestNotice)
+      onClearRequestNotice?.()
+    }
+  }, [requestNotice, onClearRequestNotice])
+
+  useEffect(() => {
+    if (resigned && gameResult) {
+      const winner = gameResult.winner === 'white' ? '白方' : '黑方'
+      setMessage(`${winner}获胜（对手认输）`)
+    }
+  }, [resigned, gameResult])
 
   const applyLocalOutcome = useCallback(
     (next: GameState, moveMsg: string) => {
@@ -190,13 +220,15 @@ export default function GameView({
         return false
       }
 
+      if (isOnline) onMoveSynced?.()
+
       if (kind === 'teleport') {
         setTeleportMode(false)
         setMessage((prev) => (prev.includes('已切回普通走棋') ? prev : `${prev} · 已切回普通走棋`))
       }
       return true
     },
-    [gameState, syncToServer, applyLocalOutcome, setGameState],
+    [gameState, syncToServer, applyLocalOutcome, setGameState, isOnline, onMoveSynced],
   )
 
   const guardInteraction = useCallback(
@@ -364,49 +396,17 @@ export default function GameView({
     [selectedSquare, teleportMode, guardInteraction, isSelectableSquare, tryCommitMove],
   )
 
-  const onPieceDrop = useCallback(
-    ({
-      sourceSquare,
-      targetSquare,
-    }: {
-      sourceSquare: string
-      targetSquare: string | null
-    }) => {
-      setIsDragging(false)
-      if (!targetSquare || teleportMode || gameOver || pendingMove) return false
-      if (!guardInteraction(sourceSquare)) return false
-
-      const [fr, fc] = squareToCoord(sourceSquare)
-      const [tr, tc] = squareToCoord(targetSquare)
-
-      if (needsPromotionChoice(gameState, config, fr, fc, tr, tc)) {
-        void tryCommitMove(fr, fc, tr, tc, 'normal', sourceSquare, targetSquare)
-        return false
-      }
-
-      void tryCommitMove(fr, fc, tr, tc, 'normal', sourceSquare, targetSquare)
-      return true
-    },
-    [teleportMode, gameOver, pendingMove, guardInteraction, tryCommitMove, gameState, config],
-  )
-
   const boardOrientation: 'white' | 'black' = playerColor === 'black' ? 'black' : 'white'
-  const draggingAllowed = canPlay && myTurn && !gameOver && !pendingMove
 
   const chessboardOptions = useMemo(
     () => ({
       position: fen,
-      onPieceDrop,
       onSquareClick: handleSquareClick,
-      onPieceDrag: () => setIsDragging(true),
       animationDurationInMs: isTouch ? 0 : 100,
       showAnimations: !isTouch,
       boardOrientation,
-      allowDragging: draggingAllowed,
+      allowDragging: false,
       allowAutoScroll: false,
-      dragActivationDistance: isTouch ? 12 : 3,
-      canDragPiece: ({ square }: { square: string | null }) =>
-        !!square && draggingAllowed && isSelectableSquare(square),
       darkSquareStyle: { backgroundColor: BOARD_DARK },
       lightSquareStyle: { backgroundColor: BOARD_LIGHT },
       squareStyles,
@@ -415,41 +415,12 @@ export default function GameView({
         height: '100%',
         borderRadius: '8px',
         boxShadow: '0 16px 40px -12px rgba(0,0,0,0.55)',
-        touchAction: 'none',
-      },
-      dropSquareStyle: {
-        boxShadow: 'inset 0 0 1px 6px rgba(34, 197, 94, 0.65)',
+        touchAction: 'manipulation',
       },
       id: 'teleport-chess',
     }),
-    [
-      fen,
-      onPieceDrop,
-      handleSquareClick,
-      isTouch,
-      boardOrientation,
-      draggingAllowed,
-      isSelectableSquare,
-      squareStyles,
-    ],
+    [fen, handleSquareClick, isTouch, boardOrientation, squareStyles],
   )
-
-  useEffect(() => {
-    if (!isDragging) return
-    const endDrag = () => setIsDragging(false)
-    document.addEventListener('mouseup', endDrag)
-    document.addEventListener('touchend', endDrag)
-    document.addEventListener('touchcancel', endDrag)
-    return () => {
-      document.removeEventListener('mouseup', endDrag)
-      document.removeEventListener('touchend', endDrag)
-      document.removeEventListener('touchcancel', endDrag)
-    }
-  }, [isDragging])
-
-  useEffect(() => {
-    if (!draggingAllowed) setIsDragging(false)
-  }, [draggingAllowed])
 
   const statusColor =
     outcome.status === 'checkmate'
@@ -466,7 +437,7 @@ export default function GameView({
         {/* 手机：上方棋盘；桌面：左侧棋盘 */}
         <section className="game-board-column">
           <div className="chess-board-stack">
-            <div className="chess-board-wrap" ref={boardRef}>
+            <div className="chess-board-wrap">
               <Chessboard options={chessboardOptions} />
             </div>
 
@@ -489,7 +460,7 @@ export default function GameView({
               </div>
             )}
 
-            {outcome.status === 'checkmate' && (
+            {outcome.status === 'checkmate' && !resigned && (
               <div className="chess-board-overlay">
                 <GameOverOverlay
                   title="将死 Checkmate"
@@ -503,7 +474,7 @@ export default function GameView({
               </div>
             )}
 
-            {outcome.status === 'stalemate' && (
+            {outcome.status === 'stalemate' && !resigned && (
               <div className="chess-board-overlay">
                 <GameOverOverlay
                   title="逼和 Stalemate"
@@ -513,6 +484,17 @@ export default function GameView({
                     setGameState(initGame(config))
                     setMessage('本地棋盘已重置')
                   }}
+                />
+              </div>
+            )}
+            {resigned && gameResult && (
+              <div className="chess-board-overlay">
+                <GameOverOverlay
+                  title="认输 Resign"
+                  subtitle={`${gameResult.winner === 'white' ? '白方' : '黑方'}获胜`}
+                  tone="resign"
+                  actionLabel="返回大厅"
+                  onRestart={onLeaveRoom}
                 />
               </div>
             )}
@@ -564,7 +546,7 @@ export default function GameView({
 
           {isTouch && canPlay && !gameOver && (
             <p className="rounded-lg border border-sky-500/25 bg-sky-950/25 px-3 py-2 text-center text-xs text-sky-300 sm:text-sm">
-              触屏：点击选子再点目标格，或长按拖拽走棋
+              触屏：先点己方子，再点目标格走棋
             </p>
           )}
 
@@ -578,6 +560,31 @@ export default function GameView({
               disabled={!canPlay || gameOver}
               onToggle={toggleTeleportMode}
             />
+
+            {isOnline && roomStatus === 'playing' && onResign && onRequestUndo && onRequestRestart && (
+              <GameControlBar
+                disabled={gameOver}
+                canUndo={canUndo}
+                pendingMyRequest={pendingMyRequest}
+                onResign={() => {
+                  if (!window.confirm('确定要认输吗？')) return
+                  void onResign().catch((e) =>
+                    setMessage(e instanceof Error ? e.message : '认输失败'),
+                  )
+                }}
+                onRequestUndo={() => {
+                  void onRequestUndo().catch((e) =>
+                    setMessage(e instanceof Error ? e.message : '请求悔棋失败'),
+                  )
+                }}
+                onRequestRestart={() => {
+                  if (!window.confirm('向对手请求重新开始本局？')) return
+                  void onRequestRestart().catch((e) =>
+                    setMessage(e instanceof Error ? e.message : '请求重开失败'),
+                  )
+                }}
+              />
+            )}
 
             {isOnline && (
               <button
@@ -609,6 +616,23 @@ export default function GameView({
         teleportMode={teleportMode}
         onClose={() => onTutorialClose?.()}
       />
+
+      {pendingOpponentRequest && onRespondToRequest && (
+        <OpponentRequestDialog
+          type={pendingOpponentRequest.type}
+          fromColor={pendingOpponentRequest.from}
+          onAccept={() => {
+            void onRespondToRequest(true).catch((e) =>
+              setMessage(e instanceof Error ? e.message : '回应失败'),
+            )
+          }}
+          onReject={() => {
+            void onRespondToRequest(false).catch((e) =>
+              setMessage(e instanceof Error ? e.message : '回应失败'),
+            )
+          }}
+        />
+      )}
     </main>
   )
 }
@@ -634,34 +658,41 @@ function GameOverOverlay({
   title,
   subtitle,
   tone,
+  actionLabel,
   onRestart,
 }: {
   title: string
   subtitle: string
-  tone: 'checkmate' | 'stalemate'
+  tone: 'checkmate' | 'stalemate' | 'resign'
+  actionLabel?: string
   onRestart: () => void
 }) {
   const isMate = tone === 'checkmate'
+  const isResign = tone === 'resign'
   return (
     <div className="absolute inset-0 z-10 flex items-center justify-center rounded-[10px] bg-black/55 backdrop-blur-[2px]">
       <div
         className={`mx-4 w-full max-w-sm rounded-2xl border px-6 py-6 text-center shadow-2xl ${
-          isMate
-            ? 'border-red-500/40 bg-gradient-to-b from-red-950/90 to-[#161622]'
-            : 'border-sky-500/40 bg-gradient-to-b from-sky-950/90 to-[#161622]'
+          isResign
+            ? 'border-amber-500/40 bg-gradient-to-b from-amber-950/90 to-[#161622]'
+            : isMate
+              ? 'border-red-500/40 bg-gradient-to-b from-red-950/90 to-[#161622]'
+              : 'border-sky-500/40 bg-gradient-to-b from-sky-950/90 to-[#161622]'
         }`}
       >
-        <p className={`text-4xl ${isMate ? 'text-red-400' : 'text-sky-400'}`}>{isMate ? '♚' : '½'}</p>
+        <p className={`text-4xl ${isResign ? 'text-amber-400' : isMate ? 'text-red-400' : 'text-sky-400'}`}>
+          {isResign ? '🏳' : isMate ? '♚' : '½'}
+        </p>
         <h3 className="mt-2 text-xl font-bold">{title}</h3>
         <p className="mt-1 text-sm text-white/65">{subtitle}</p>
         <button
           type="button"
           onClick={onRestart}
           className={`mt-5 w-full rounded-xl py-2.5 text-sm font-semibold text-white transition ${
-            isMate ? 'bg-red-600 hover:bg-red-500' : 'bg-sky-600 hover:bg-sky-500'
+            isResign ? 'bg-amber-600 hover:bg-amber-500' : isMate ? 'bg-red-600 hover:bg-red-500' : 'bg-sky-600 hover:bg-sky-500'
           }`}
         >
-          重置棋盘
+          {actionLabel ?? '重置棋盘'}
         </button>
       </div>
     </div>
