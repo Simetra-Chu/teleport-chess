@@ -519,7 +519,9 @@ export default function GameView({
     ) : null
 
   return (
-    <main className="game-page">
+    <main
+      className={`game-page${isTouch ? ' game-page--has-dock' : ''}${isTouch && roomStatus === 'playing' ? ' game-page--playing-dock' : ''}`}
+    >
       <div className="game-layout">
         {/* 手机：上方棋盘；桌面：左侧棋盘 */}
         <section className="game-board-column">
@@ -637,11 +639,11 @@ export default function GameView({
           <div className="game-status-grid rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-center text-xs sm:text-sm">
             {isOnline && (
               <>
-                <div>
+                <div className="hidden lg:block">
                   <p className="text-white/40">房间号</p>
                   <p className="font-mono font-bold tracking-widest text-purple-400">{roomCode}</p>
                 </div>
-                <div>
+                <div className="hidden lg:block">
                   <p className="text-white/40">你的阵营</p>
                   <p className="font-semibold text-amber-400">
                     {playerColor ? colorLabel(playerColor) : '—'}
@@ -686,26 +688,28 @@ export default function GameView({
           )}
 
           {!myTurn && canPlay && !gameOver && (
-            <p className="rounded-lg border border-orange-500/30 bg-orange-950/30 px-3 py-2 text-center text-xs text-orange-300 sm:text-sm">
+            <p className="hidden rounded-lg border border-orange-500/30 bg-orange-950/30 px-3 py-2 text-center text-xs text-orange-300 sm:text-sm lg:block">
               等待对手走棋…
             </p>
           )}
 
-          {isTouch && canPlay && !gameOver && (
-            <p className="rounded-lg border border-sky-500/25 bg-sky-950/25 px-3 py-2 text-center text-xs text-sky-300 sm:text-sm">
+          {isTouch && canPlay && !gameOver && roomStatus === 'playing' && (
+            <p className="hidden rounded-lg border border-sky-500/25 bg-sky-950/25 px-3 py-2 text-center text-xs text-sky-300 sm:text-sm lg:block">
               触屏：先点己方子，再点目标格走棋
             </p>
           )}
 
           {isOnline && roomStatus === 'waiting' && playerColor === 'white' && roomCode && (
-            <RoomInviteShare roomCode={roomCode} variant="inline" />
+            <div className="hidden lg:block">
+              <RoomInviteShare roomCode={roomCode} variant="inline" />
+            </div>
           )}
 
-          <p className="rounded-lg border border-white/10 bg-black/30 px-3 py-2.5 text-center text-xs text-white/70 sm:text-sm">
+          <p className="hidden rounded-lg border border-white/10 bg-black/30 px-3 py-2.5 text-center text-xs text-white/70 sm:text-sm lg:block">
             {message}
           </p>
 
-          <div className="mobile-action-bar">
+          <div className="mobile-action-bar hidden lg:flex">
             <TeleportModeButton
               teleportMode={teleportMode}
               disabled={!canPlay || gameOver}
@@ -766,19 +770,103 @@ export default function GameView({
             )}
           </div>
 
-          <RuleConfigPanel
-            config={config}
-            onChange={() => {}}
-            readOnly
-            title="本局规则"
-            hint={
-              roomStatus === 'waiting' && playerColor === 'white'
-                ? '等待对手加入，规则已锁定'
-                : '以下规则由房主在创建房间时设定'
-            }
-          />
+          <details className="mobile-rules-details lg:hidden">
+            <summary className="mobile-rules-summary">本局规则</summary>
+            <RuleConfigPanel
+              config={config}
+              onChange={() => {}}
+              readOnly
+              title="本局规则"
+              hint={
+                roomStatus === 'waiting' && playerColor === 'white'
+                  ? '等待对手加入，规则已锁定'
+                  : '以下规则由房主在创建房间时设定'
+              }
+            />
+          </details>
+
+          <div className="hidden lg:block">
+            <RuleConfigPanel
+              config={config}
+              onChange={() => {}}
+              readOnly
+              title="本局规则"
+              hint={
+                roomStatus === 'waiting' && playerColor === 'white'
+                  ? '等待对手加入，规则已锁定'
+                  : '以下规则由房主在创建房间时设定'
+              }
+            />
+          </div>
         </aside>
       </div>
+
+      {isTouch && (
+        <div className={`mobile-game-dock lg:hidden${roomStatus === 'playing' ? ' mobile-game-dock--playing' : ''}`}>
+          {roomStatus === 'playing' && (
+            <>
+              <TeleportModeButton
+                teleportMode={teleportMode}
+                disabled={!canPlay || gameOver}
+                onToggle={toggleTeleportMode}
+              />
+
+              {isOnline && onResign && onRequestUndo && onRequestRestart && (
+                <GameControlBar
+                  disabled={gameOver}
+                  canRequestUndo={canRequestUndo}
+                  pendingMyUndoRequest={pendingMyUndoRequest}
+                  pendingMyRestartRequest={pendingMyRestartRequest}
+                  clockPaused={clockPaused}
+                  pendingMyPauseRequest={pendingMyPauseRequest}
+                  pendingMyResumeRequest={pendingMyResumeRequest}
+                  onResign={() => {
+                    if (!window.confirm('确定要认输吗？')) return
+                    void onResign().catch((e) =>
+                      setMessage(e instanceof Error ? e.message : '认输失败'),
+                    )
+                  }}
+                  onRequestUndo={() => {
+                    if (!canRequestUndo) {
+                      setMessage('你只能在自己走完棋后请求悔棋')
+                      return
+                    }
+                    void onRequestUndo().catch((e) =>
+                      setMessage(e instanceof Error ? e.message : '请求悔棋失败'),
+                    )
+                  }}
+                  onRequestPause={() => {
+                    void onRequestPause?.().catch((e) =>
+                      setMessage(e instanceof Error ? e.message : '请求暂停失败'),
+                    )
+                  }}
+                  onRequestResume={() => {
+                    void onRequestResume?.().catch((e) =>
+                      setMessage(e instanceof Error ? e.message : '请求恢复失败'),
+                    )
+                  }}
+                  onRequestRestart={() => {
+                    if (!window.confirm('向对手请求重新开始本局？')) return
+                    void onRequestRestart().catch((e) =>
+                      setMessage(e instanceof Error ? e.message : '请求重开失败'),
+                    )
+                  }}
+                />
+              )}
+            </>
+          )}
+
+          {isOnline && (
+            <button
+              type="button"
+              onClick={onLeaveRoom}
+              className="mobile-game-dock-leave"
+            >
+              离开房间
+            </button>
+          )}
+        </div>
+      )}
 
       <GameTutorialOverlay
         open={interactiveTutorial}
@@ -791,16 +879,17 @@ export default function GameView({
 
 function WaitingOverlay({ roomCode }: { roomCode: string }) {
   return (
-    <div className="absolute inset-0 z-10 flex items-end justify-center rounded-[10px] bg-gradient-to-t from-black/80 via-black/20 to-transparent pb-8">
-      <div className="mx-4 w-full max-w-sm rounded-2xl border border-purple-500/30 bg-[#161622]/95 px-6 py-5 text-center shadow-2xl">
-        <p className="text-xs uppercase tracking-widest text-white/40">你的房间号是</p>
-        <p className="mt-2 font-mono text-4xl font-bold tracking-[0.25em] text-purple-400">{roomCode}</p>
+    <div className="waiting-overlay absolute inset-0 z-10 flex items-end justify-center rounded-[10px] bg-gradient-to-t from-black/80 via-black/20 to-transparent pb-3 sm:pb-8">
+      <div className="waiting-overlay-card mx-3 mb-1 w-full max-w-sm rounded-2xl border border-purple-500/30 bg-[#161622]/95 px-4 py-4 text-center shadow-2xl sm:px-6 sm:py-5">
+        <p className="text-[10px] uppercase tracking-widest text-white/40 sm:text-xs">你的房间号是</p>
+        <p className="mt-1 font-mono text-3xl font-bold tracking-[0.2em] text-purple-400 sm:mt-2 sm:text-4xl sm:tracking-[0.25em]">
+          {roomCode}
+        </p>
         <RoomInviteShare roomCode={roomCode} />
-        <p className="mt-4 flex items-center justify-center gap-2 text-sm text-amber-400/90">
+        <p className="mt-3 flex items-center justify-center gap-2 text-sm text-amber-400/90">
           <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-amber-400" />
           等待好友加入…
         </p>
-        <p className="mt-3 text-xs text-white/40">好友在浏览器中打开链接即可加入，作为黑方开始对局</p>
       </div>
     </div>
   )

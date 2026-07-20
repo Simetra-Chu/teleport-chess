@@ -4,6 +4,8 @@
   --page-x: clamp(0.75rem, 3vw, 1.5rem);
   --board-max: 560px;
   --header-h: 3.75rem;
+  --mobile-dock-h: 3.25rem;
+  --mobile-info-reserve: 5.5rem;
 }
 
 *,
@@ -62,6 +64,30 @@ body {
   padding: 0.75rem var(--page-x) calc(1.25rem + env(safe-area-inset-bottom, 0px));
 }
 
+@media (max-width: 1023px) {
+  .game-page {
+    padding-top: 0.5rem;
+    padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .game-page--has-dock {
+    padding-bottom: calc(var(--mobile-dock-h) + env(safe-area-inset-bottom, 0px) + 0.75rem);
+  }
+
+  .game-page--has-dock:has(.mobile-game-dock--playing) {
+    padding-bottom: calc(7.5rem + env(safe-area-inset-bottom, 0px) + 0.75rem);
+  }
+
+  .game-layout {
+    gap: 0.625rem;
+  }
+
+  .game-info-column {
+    gap: 0.5rem;
+    padding-bottom: 0;
+  }
+}
+
 @media (min-width: 640px) {
   .game-page {
     padding-top: 1.25rem;
@@ -111,7 +137,7 @@ body {
 
 @media (max-width: 1023px) {
   .game-info-column {
-    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+    padding-bottom: 0;
   }
 }
 
@@ -171,18 +197,59 @@ body {
     width: min(
       calc(100vw - 2 * max(var(--page-x), env(safe-area-inset-left, 0px))),
       calc(
-        100dvh - var(--header-h) - env(safe-area-inset-top, 0px) -
-          env(safe-area-inset-bottom, 0px) - 1rem
+        100dvh - var(--header-h) - var(--mobile-dock-h) - var(--mobile-info-reserve) -
+          env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 1.25rem
       )
     );
     max-width: min(
       calc(100vw - 2 * max(var(--page-x), env(safe-area-inset-left, 0px))),
       calc(
-        100dvh - var(--header-h) - env(safe-area-inset-top, 0px) -
-          env(safe-area-inset-bottom, 0px) - 1rem
+        100dvh - var(--header-h) - var(--mobile-dock-h) - var(--mobile-info-reserve) -
+          env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 1.25rem
       )
     );
     margin-inline: auto;
+  }
+
+  .waiting-overlay {
+    align-items: flex-end;
+  }
+
+  .waiting-overlay-card {
+    max-height: min(58dvh, 22rem);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .game-status-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 0.625rem 0.75rem;
+  }
+
+  .game-page--playing-dock .chess-board-stack,
+  .game-page--playing-dock .chess-board-wrap {
+    width: min(
+      calc(100vw - 2 * max(var(--page-x), env(safe-area-inset-left, 0px))),
+      calc(
+        100dvh - var(--header-h) - 7.5rem - var(--mobile-info-reserve) -
+          env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 1.25rem
+      )
+    );
+    max-width: min(
+      calc(100vw - 2 * max(var(--page-x), env(safe-area-inset-left, 0px))),
+      calc(
+        100dvh - var(--header-h) - 7.5rem - var(--mobile-info-reserve) -
+          env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 1.25rem
+      )
+    );
+  }
+
+  .game-page--playing-dock .game-chat-fab {
+    bottom: calc(7.5rem + env(safe-area-inset-bottom, 0px) + 3.75rem);
+  }
+
+  .game-page--playing-dock .tutorial-float-btn {
+    bottom: calc(7.5rem + env(safe-area-inset-bottom, 0px) + 0.75rem);
   }
 
   /* 移动端聊天只走浮层，禁止内嵌占高 */
@@ -213,7 +280,7 @@ body {
   display: block;
 }
 
-/* 手机端操作栏：吸底，方便拇指触达 */
+/* 手机端操作栏：桌面在侧栏内 */
 .mobile-action-bar {
   display: flex;
   flex-wrap: wrap;
@@ -221,14 +288,113 @@ body {
   width: 100%;
 }
 
+.mobile-game-dock {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 28;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem max(var(--page-x), env(safe-area-inset-left, 0px))
+    calc(0.625rem + env(safe-area-inset-bottom, 0px))
+    max(var(--page-x), env(safe-area-inset-right, 0px));
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(13, 13, 20, 0.96);
+  backdrop-filter: blur(10px);
+}
+
+.mobile-game-dock--playing {
+  --mobile-dock-h: 7.5rem;
+}
+
+.mobile-game-dock .mode-toggle-wrap {
+  flex: 1 1 100%;
+}
+
+.mobile-game-dock .mode-toggle-btn {
+  width: 100%;
+}
+
+.mobile-game-dock .game-control-bar {
+  flex: 1 1 100%;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.mobile-game-dock .game-control-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.mobile-game-dock .game-control-btn {
+  flex: 0 0 auto;
+}
+
+.mobile-game-dock-leave {
+  min-height: 2.75rem;
+  width: 100%;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  background: rgba(127, 29, 29, 0.28);
+  padding: 0.5rem 0.875rem;
+  font-size: 0.8125rem;
+  color: rgb(252, 165, 165);
+}
+
+.mobile-game-dock--playing .mobile-game-dock-leave {
+  width: auto;
+  flex: 0 0 auto;
+  min-width: 5.5rem;
+}
+
+.mobile-rules-details {
+  border-radius: 0.875rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(22, 22, 34, 0.72);
+  overflow: hidden;
+}
+
+.mobile-rules-summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 0.75rem 1rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: rgb(251, 191, 36);
+}
+
+.mobile-rules-summary::-webkit-details-marker {
+  display: none;
+}
+
+.mobile-rules-details[open] .mobile-rules-summary {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.mobile-rules-details .rounded-2xl {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
 @media (max-width: 1023px) {
-  .mobile-action-bar {
-    position: sticky;
-    bottom: 0;
-    z-index: 20;
-    margin-top: 0.25rem;
-    padding: 0.75rem 0 calc(0.5rem + env(safe-area-inset-bottom, 0px));
-    background: linear-gradient(to top, #0d0d14 70%, transparent);
+  .game-chat-fab {
+    bottom: calc(var(--mobile-dock-h) + env(safe-area-inset-bottom, 0px) + 3.75rem);
+  }
+
+  .tutorial-float-btn {
+    bottom: calc(var(--mobile-dock-h) + env(safe-area-inset-bottom, 0px) + 0.75rem);
+    right: max(var(--page-x), env(safe-area-inset-right, 0px));
+  }
+}
+
+@media (min-width: 1024px) {
+  .mobile-game-dock {
+    display: none;
   }
 }
 
