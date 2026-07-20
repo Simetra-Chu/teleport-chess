@@ -32,8 +32,9 @@ import TeleportModeButton from './TeleportModeButton'
 import GameTutorialOverlay from './GameTutorialOverlay'
 import GameControlBar from './GameControlBar'
 import OpponentRequestDialog from './OpponentRequestDialog'
+import UndoRequestDialog from './UndoRequestDialog'
 import RoomInviteShare from './RoomInviteShare'
-import type { GameResult, OpponentRequestEvent, OpponentRequestType, PlayerColor, RoomStatus } from '../multiplayer/types'
+import type { GameResult, OpponentRequestEvent, PlayerColor, RoomStatus, UndoRequestEvent } from '../multiplayer/types'
 
 type PendingMove = {
   fr: number
@@ -58,16 +59,20 @@ interface GameViewProps {
   interactiveTutorial?: boolean
   onTutorialClose?: () => void
   gameResult?: GameResult | null
-  canUndo?: boolean
-  pendingOpponentRequest?: OpponentRequestEvent | null
-  pendingMyRequest?: OpponentRequestType | null
+  canRequestUndo?: boolean
+  pendingOpponentUndoRequest?: UndoRequestEvent | null
+  pendingMyUndoRequest?: boolean
+  pendingOpponentRestartRequest?: OpponentRequestEvent | null
+  pendingMyRestartRequest?: boolean
   requestNotice?: string | null
   onResign?: () => Promise<void>
   onRequestUndo?: () => Promise<void>
+  onAcceptUndo?: () => Promise<void>
+  onDeclineUndo?: () => Promise<void>
   onRequestRestart?: () => Promise<void>
-  onRespondToRequest?: (accept: boolean) => Promise<void>
+  onRespondToRestartRequest?: (accept: boolean) => Promise<void>
   onClearRequestNotice?: () => void
-  onMoveSynced?: () => void
+  onRecordLastMove?: (by: PlayerColor) => void
 }
 
 export default function GameView({
@@ -83,16 +88,20 @@ export default function GameView({
   interactiveTutorial = false,
   onTutorialClose,
   gameResult = null,
-  canUndo = false,
-  pendingOpponentRequest = null,
-  pendingMyRequest = null,
+  canRequestUndo = false,
+  pendingOpponentUndoRequest = null,
+  pendingMyUndoRequest = false,
+  pendingOpponentRestartRequest = null,
+  pendingMyRestartRequest = false,
   requestNotice = null,
   onResign,
   onRequestUndo,
+  onAcceptUndo,
+  onDeclineUndo,
   onRequestRestart,
-  onRespondToRequest,
+  onRespondToRestartRequest,
   onClearRequestNotice,
-  onMoveSynced,
+  onRecordLastMove,
 }: GameViewProps) {
   const [teleportMode, setTeleportMode] = useState(false)
   const [selectedSquare, setSelectedSquare] = useState<string | null>(null)
@@ -221,7 +230,7 @@ export default function GameView({
         return false
       }
 
-      if (isOnline) onMoveSynced?.()
+      if (isOnline && playerColor) onRecordLastMove?.(playerColor)
 
       if (kind === 'teleport') {
         setTeleportMode(false)
@@ -229,7 +238,7 @@ export default function GameView({
       }
       return true
     },
-    [gameState, syncToServer, applyLocalOutcome, setGameState, isOnline, onMoveSynced],
+    [gameState, syncToServer, applyLocalOutcome, setGameState, isOnline, playerColor, onRecordLastMove],
   )
 
   const guardInteraction = useCallback(
@@ -569,8 +578,9 @@ export default function GameView({
             {isOnline && roomStatus === 'playing' && onResign && onRequestUndo && onRequestRestart && (
               <GameControlBar
                 disabled={gameOver}
-                canUndo={canUndo}
-                pendingMyRequest={pendingMyRequest}
+                canRequestUndo={canRequestUndo}
+                pendingMyUndoRequest={pendingMyUndoRequest}
+                pendingMyRestartRequest={pendingMyRestartRequest}
                 onResign={() => {
                   if (!window.confirm('确定要认输吗？')) return
                   void onResign().catch((e) =>
@@ -578,6 +588,10 @@ export default function GameView({
                   )
                 }}
                 onRequestUndo={() => {
+                  if (!canRequestUndo) {
+                    setMessage('你只能在自己走完棋后请求悔棋')
+                    return
+                  }
                   void onRequestUndo().catch((e) =>
                     setMessage(e instanceof Error ? e.message : '请求悔棋失败'),
                   )
@@ -622,17 +636,31 @@ export default function GameView({
         onClose={() => onTutorialClose?.()}
       />
 
-      {pendingOpponentRequest && onRespondToRequest && (
-        <OpponentRequestDialog
-          type={pendingOpponentRequest.type}
-          fromColor={pendingOpponentRequest.from}
+      {pendingOpponentUndoRequest && onAcceptUndo && onDeclineUndo && (
+        <UndoRequestDialog
           onAccept={() => {
-            void onRespondToRequest(true).catch((e) =>
+            void onAcceptUndo().catch((e) =>
               setMessage(e instanceof Error ? e.message : '回应失败'),
             )
           }}
           onReject={() => {
-            void onRespondToRequest(false).catch((e) =>
+            void onDeclineUndo().catch((e) =>
+              setMessage(e instanceof Error ? e.message : '回应失败'),
+            )
+          }}
+        />
+      )}
+
+      {pendingOpponentRestartRequest && onRespondToRestartRequest && (
+        <OpponentRequestDialog
+          fromColor={pendingOpponentRestartRequest.from}
+          onAccept={() => {
+            void onRespondToRestartRequest(true).catch((e) =>
+              setMessage(e instanceof Error ? e.message : '回应失败'),
+            )
+          }}
+          onReject={() => {
+            void onRespondToRestartRequest(false).catch((e) =>
               setMessage(e instanceof Error ? e.message : '回应失败'),
             )
           }}

@@ -7,7 +7,24 @@ export type PlayerColor = 'white' | 'black'
 
 export type RoomStatus = 'waiting' | 'playing' | 'finished'
 
-export type OpponentRequestType = 'undo' | 'restart'
+export type OpponentRequestType = 'restart'
+
+export interface UndoRequestEvent {
+  roomCode: string
+  from: PlayerColor
+}
+
+export interface UndoAcceptedEvent {
+  roomCode: string
+  from: PlayerColor
+  gameState: import('../chessEngine').GameState
+}
+
+export interface UndoDeclinedEvent {
+  roomCode: string
+  from: PlayerColor
+  by: PlayerColor
+}
 
 export interface GameEndEvent {
   roomCode: string
@@ -24,7 +41,7 @@ export interface OpponentRequestEvent {
 
 export interface RequestRespondedEvent {
   roomCode: string
-  type: OpponentRequestType
+  type: 'restart'
   accept: boolean
   by: PlayerColor
   gameState?: import('../chessEngine').GameState

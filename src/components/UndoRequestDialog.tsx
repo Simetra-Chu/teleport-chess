@@ -1,18 +1,9 @@
-import type { PlayerColor } from '../multiplayer/types'
-
-export interface OpponentRequestDialogProps {
-  fromColor: PlayerColor
+interface UndoRequestDialogProps {
   onAccept: () => void
   onReject: () => void
 }
 
-export default function OpponentRequestDialog({
-  fromColor,
-  onAccept,
-  onReject,
-}: OpponentRequestDialogProps) {
-  const who = fromColor === 'white' ? '白方' : '黑方'
-
+export default function UndoRequestDialog({ onAccept, onReject }: UndoRequestDialogProps) {
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
       <div
@@ -20,9 +11,9 @@ export default function OpponentRequestDialog({
         role="dialog"
         aria-modal="true"
       >
-        <h3 className="text-lg font-bold text-amber-400">重开请求</h3>
+        <h3 className="text-lg font-bold text-amber-400">悔棋请求</h3>
         <p className="mt-2 text-sm leading-relaxed text-white/75">
-          {who} 请求重新开始一局，是否同意？
+          对方请求悔棋，是否同意？
         </p>
         <div className="mt-5 flex gap-2">
           <button

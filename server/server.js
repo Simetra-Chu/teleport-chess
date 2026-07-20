@@ -169,6 +169,8 @@ io.on('connection', (socket) => {
         config,
         gameState,
         previousGameState: null,
+        lastMoveBy: null,
+        pendingUndoRequest: null,
         pendingRequest: null,
         status: 'waiting',
       }
@@ -257,6 +259,8 @@ io.on('connection', (socket) => {
 
       room.previousGameState = cloneGameState(room.gameState)
       room.pendingRequest = null
+      room.pendingUndoRequest = null
+      room.lastMoveBy = color
       room.gameState = gameState
 
       const event = {
@@ -296,6 +300,8 @@ io.on('connection', (socket) => {
 
       room.previousGameState = cloneGameState(room.gameState)
       room.pendingRequest = null
+      room.pendingUndoRequest = null
+      room.lastMoveBy = color
       room.gameState = gameState
 
       const event = {
@@ -329,6 +335,7 @@ io.on('connection', (socket) => {
       const winner = color === 'white' ? 'black' : 'white'
       room.status = 'finished'
       room.pendingRequest = null
+      room.pendingUndoRequest = null
 
       const event = {
         roomCode: room.code,
@@ -345,25 +352,84 @@ io.on('connection', (socket) => {
     }
   })
 
-  socket.on('requestUndo', (_payload, ack) => {
+  socket.on('undoRequest', (_payload, ack) => {
     try {
       const room = getRoomForSocket(socket.id)
       const color = getPlayerColor(room, socket.id)
       if (!color) throw new Error('你不在这个房间')
       if (room.status !== 'playing') throw new Error('对局未进行中')
       if (!room.previousGameState) throw new Error('当前没有可悔棋的步数')
-      if (room.pendingRequest) throw new Error('已有待处理的请求')
+      if (room.lastMoveBy !== color) throw new Error('你只能在自己走完棋后请求悔棋')
+      if (room.pendingUndoRequest) throw new Error('已有待处理的悔棋请求')
 
-      room.pendingRequest = { type: 'undo', from: color }
-      socket.to(room.code).emit('opponentRequest', {
+      room.pendingUndoRequest = { from: color }
+      socket.to(room.code).emit('undoRequest', {
         roomCode: room.code,
-        type: 'undo',
         from: color,
       })
       reply(ack, { ok: true })
-      console.log(`[requestUndo] room ${room.code} from ${color}`)
+      console.log(`[undoRequest] room ${room.code} from ${color}`)
     } catch (err) {
       reply(ack, { ok: false, error: err.message || '请求悔棋失败' })
+    }
+  })
+
+  socket.on('undoAccept', (_payload, ack) => {
+    try {
+      const room = getRoomForSocket(socket.id)
+      const color = getPlayerColor(room, socket.id)
+      if (!color) throw new Error('你不在这个房间')
+      if (room.status !== 'playing') throw new Error('对局未进行中')
+
+      const pending = room.pendingUndoRequest
+      if (!pending) throw new Error('没有待处理的悔棋请求')
+      if (pending.from === color) throw new Error('不能回应自己的悔棋请求')
+      if (!room.previousGameState) throw new Error('无法悔棋')
+
+      room.pendingUndoRequest = null
+      room.gameState = cloneGameState(room.previousGameState)
+      room.previousGameState = null
+      room.lastMoveBy = null
+
+      const event = {
+        roomCode: room.code,
+        from: pending.from,
+        gameState: room.gameState,
+      }
+
+      io.to(room.code).emit('undoAccepted', event)
+      reply(ack, { ok: true, ...event })
+      console.log(`[undoAccept] room ${room.code} by ${color}`)
+    } catch (err) {
+      reply(ack, { ok: false, error: err.message || '同意悔棋失败' })
+    }
+  })
+
+  socket.on('undoDecline', (_payload, ack) => {
+    try {
+      const room = getRoomForSocket(socket.id)
+      const color = getPlayerColor(room, socket.id)
+      if (!color) throw new Error('你不在这个房间')
+      if (room.status !== 'playing') throw new Error('对局未进行中')
+
+      const pending = room.pendingUndoRequest
+      if (!pending) throw new Error('没有待处理的悔棋请求')
+      if (pending.from === color) throw new Error('不能回应自己的悔棋请求')
+
+      room.pendingUndoRequest = null
+
+      const event = {
+        roomCode: room.code,
+        from: pending.from,
+        by: color,
+      }
+
+      const requesterId = pending.from === 'white' ? room.hostId : room.guestId
+      if (requesterId) io.to(requesterId).emit('undoDeclined', event)
+      reply(ack, { ok: true, ...event })
+      console.log(`[undoDecline] room ${room.code} by ${color}`)
+    } catch (err) {
+      reply(ack, { ok: false, error: err.message || '拒绝悔棋失败' })
     }
   })
 
@@ -398,6 +464,7 @@ io.on('connection', (socket) => {
       const pending = room.pendingRequest
       if (!pending) throw new Error('没有待处理的请求')
       if (pending.from === color) throw new Error('不能回应自己的请求')
+      if (pending.type !== 'restart') throw new Error('无效的请求类型')
 
       const accept = Boolean(payload.accept)
       const responded = {
@@ -410,16 +477,10 @@ io.on('connection', (socket) => {
       room.pendingRequest = null
 
       if (accept) {
-        if (pending.type === 'undo') {
-          if (!room.previousGameState) throw new Error('无法悔棋')
-          room.gameState = cloneGameState(room.previousGameState)
-          room.previousGameState = null
-          responded.gameState = room.gameState
-        } else {
-          room.gameState = createInitialGameState(room.config)
-          room.previousGameState = null
-          responded.gameState = room.gameState
-        }
+        room.gameState = createInitialGameState(room.config)
+        room.previousGameState = null
+        room.lastMoveBy = null
+        responded.gameState = room.gameState
       }
 
       io.to(room.code).emit('requestResponded', responded)

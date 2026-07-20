@@ -244,6 +244,10 @@ body {
   background: rgba(120, 53, 15, 0.45);
 }
 
+.game-control-btn--undo.game-control-btn--muted:not(:disabled) {
+  opacity: 0.55;
+}
+
 .game-control-btn--restart {
   border-color: rgba(56, 189, 248, 0.35);
   color: rgb(125, 211, 252);

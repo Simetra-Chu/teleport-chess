@@ -110,16 +110,20 @@ export default function App() {
           interactiveTutorial={tutorialOpen}
           onTutorialClose={() => setTutorialOpen(false)}
           gameResult={mp.gameResult}
-          canUndo={mp.canUndo}
-          pendingOpponentRequest={mp.pendingOpponentRequest}
-          pendingMyRequest={mp.pendingMyRequest}
+          canRequestUndo={mp.canRequestUndo}
+          pendingOpponentUndoRequest={mp.pendingOpponentUndoRequest}
+          pendingMyUndoRequest={mp.pendingMyUndoRequest}
+          pendingOpponentRestartRequest={mp.pendingOpponentRestartRequest}
+          pendingMyRestartRequest={mp.pendingMyRestartRequest}
           requestNotice={mp.requestNotice}
           onResign={mp.resign}
           onRequestUndo={mp.requestUndo}
+          onAcceptUndo={mp.acceptUndo}
+          onDeclineUndo={mp.declineUndo}
           onRequestRestart={mp.requestRestart}
-          onRespondToRequest={mp.respondToRequest}
+          onRespondToRestartRequest={mp.respondToRestartRequest}
           onClearRequestNotice={mp.clearRequestNotice}
-          onMoveSynced={mp.markCanUndo}
+          onRecordLastMove={mp.recordLastMove}
         />
       )}
     </div>
