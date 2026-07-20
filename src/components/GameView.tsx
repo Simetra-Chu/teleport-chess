@@ -32,6 +32,7 @@ import TeleportModeButton from './TeleportModeButton'
 import GameTutorialOverlay from './GameTutorialOverlay'
 import GameControlBar from './GameControlBar'
 import RoomInviteShare from './RoomInviteShare'
+import WaitingRoomPanel from './WaitingRoomPanel'
 import ChessClockDisplay from './ChessClockDisplay'
 import GameRequestBanner from './GameRequestBanner'
 import GameChatPanel from './GameChatPanel'
@@ -544,9 +545,7 @@ export default function GameView({
             )}
 
             {isOnline && roomStatus === 'waiting' && playerColor === 'white' && (
-              <div className="chess-board-overlay">
-                <WaitingOverlay roomCode={roomCode!} />
-              </div>
+              <WaitingRoomPanel roomCode={roomCode!} />
             )}
 
             {outcome.status === 'checkmate' && !resigned && !timedOut && (
@@ -635,7 +634,7 @@ export default function GameView({
         </section>
 
         {/* 手机：下方信息/记录；桌面：右侧边栏 */}
-        <aside className="game-info-column">
+        <aside className={`game-info-column${roomStatus === 'waiting' ? ' game-info-column--waiting' : ''}`}>
           <div className="game-status-grid rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-center text-xs sm:text-sm">
             {isOnline && (
               <>
@@ -874,24 +873,6 @@ export default function GameView({
         onClose={() => onTutorialClose?.()}
       />
     </main>
-  )
-}
-
-function WaitingOverlay({ roomCode }: { roomCode: string }) {
-  return (
-    <div className="waiting-overlay absolute inset-0 z-10 flex items-end justify-center rounded-[10px] bg-gradient-to-t from-black/80 via-black/20 to-transparent pb-3 sm:pb-8">
-      <div className="waiting-overlay-card mx-3 mb-1 w-full max-w-sm rounded-2xl border border-purple-500/30 bg-[#161622]/95 px-4 py-4 text-center shadow-2xl sm:px-6 sm:py-5">
-        <p className="text-[10px] uppercase tracking-widest text-white/40 sm:text-xs">你的房间号是</p>
-        <p className="mt-1 font-mono text-3xl font-bold tracking-[0.2em] text-purple-400 sm:mt-2 sm:text-4xl sm:tracking-[0.25em]">
-          {roomCode}
-        </p>
-        <RoomInviteShare roomCode={roomCode} />
-        <p className="mt-3 flex items-center justify-center gap-2 text-sm text-amber-400/90">
-          <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-amber-400" />
-          等待好友加入…
-        </p>
-      </div>
-    </div>
   )
 }
 

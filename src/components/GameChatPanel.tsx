@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import { useMobileGameLayout } from '../hooks/useMobileGameLayout'
 import type { ChatMessage, PlayerColor } from '../multiplayer/types'
 import { colorLabel } from '../multiplayer/gameHelpers'
 
@@ -17,17 +18,7 @@ function formatTime(ts: number): string {
 }
 
 function useCompactChatLayout() {
-  const [compact, setCompact] = useState(true)
-
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 1023px)')
-    const update = () => setCompact(mq.matches)
-    update()
-    mq.addEventListener('change', update)
-    return () => mq.removeEventListener('change', update)
-  }, [])
-
-  return compact
+  return useMobileGameLayout()
 }
 
 function useKeyboardInset(active: boolean) {

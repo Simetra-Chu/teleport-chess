@@ -166,6 +166,27 @@ body {
   pointer-events: auto;
 }
 
+.waiting-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.55);
+  touch-action: auto;
+  pointer-events: auto;
+}
+
+.waiting-overlay .waiting-room-card {
+  width: 100%;
+  max-width: 20rem;
+  max-height: 100%;
+  overflow-y: auto;
+}
+
 /* ── 棋盘容器：100% 宽、1:1 等比、棋子随格缩放 ── */
 .chess-board-wrap {
   position: relative;
@@ -211,14 +232,32 @@ body {
     margin-inline: auto;
   }
 
-  .waiting-overlay {
-    align-items: flex-end;
+  .waiting-room-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding:
+      calc(var(--header-h) + env(safe-area-inset-top, 0px) + 0.75rem)
+      max(var(--page-x), env(safe-area-inset-left, 0px))
+      calc(var(--mobile-dock-h) + env(safe-area-inset-bottom, 0px) + 0.75rem)
+      max(var(--page-x), env(safe-area-inset-right, 0px));
+    background: rgba(0, 0, 0, 0.62);
+    backdrop-filter: blur(2px);
   }
 
-  .waiting-overlay-card {
-    max-height: min(58dvh, 22rem);
+  .waiting-room-modal-panel {
+    width: 100%;
+    max-width: 24rem;
+    max-height: 100%;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+  }
+
+  .game-info-column--waiting {
+    display: none;
   }
 
   .game-status-grid {
