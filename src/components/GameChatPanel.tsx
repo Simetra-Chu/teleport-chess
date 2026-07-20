@@ -17,9 +17,7 @@ function formatTime(ts: number): string {
 }
 
 function useCompactChatLayout() {
-  const [compact, setCompact] = useState(() =>
-    typeof window !== 'undefined' ? window.matchMedia('(max-width: 1023px)').matches : false,
-  )
+  const [compact, setCompact] = useState(true)
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 1023px)')

@@ -629,7 +629,7 @@ export default function GameView({
             />
           )}
 
-          {chatPanel && <div className="game-board-chat">{chatPanel}</div>}
+          {chatPanel && <div className="game-board-chat hidden lg:block">{chatPanel}</div>}
         </section>
 
         {/* 手机：下方信息/记录；桌面：右侧边栏 */}

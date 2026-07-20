@@ -3,7 +3,7 @@
 :root {
   --page-x: clamp(0.75rem, 3vw, 1.5rem);
   --board-max: 560px;
-  --header-h: 3.25rem;
+  --header-h: 3.75rem;
 }
 
 *,
@@ -34,6 +34,22 @@ body {
   min-height: 100dvh;
   overflow-x: hidden;
   width: 100%;
+}
+
+@media (max-width: 1023px) {
+  .app-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 30;
+    padding-top: env(safe-area-inset-top, 0px);
+    background: rgba(13, 13, 20, 0.92);
+  }
+
+  .app-shell--with-header {
+    padding-top: calc(var(--header-h) + env(safe-area-inset-top, 0px));
+  }
 }
 
 /* ═══════════════════════════════════════
@@ -140,7 +156,7 @@ body {
   contain: layout style;
 }
 
-/* 手机：棋盘尽量占满屏宽（扣除安全区） */
+/* 手机：棋盘适配视口，避免顶栏被顶出屏幕 */
 @media (max-width: 1023px) {
   .game-board-column {
     width: calc(100% + 2 * var(--page-x));
@@ -152,10 +168,27 @@ body {
 
   .chess-board-stack,
   .chess-board-wrap {
-    max-width: min(
-      100%,
-      calc(100vw - 2 * max(var(--page-x), env(safe-area-inset-left, 0px)))
+    width: min(
+      calc(100vw - 2 * max(var(--page-x), env(safe-area-inset-left, 0px))),
+      calc(
+        100dvh - var(--header-h) - env(safe-area-inset-top, 0px) -
+          env(safe-area-inset-bottom, 0px) - 1rem
+      )
     );
+    max-width: min(
+      calc(100vw - 2 * max(var(--page-x), env(safe-area-inset-left, 0px))),
+      calc(
+        100dvh - var(--header-h) - env(safe-area-inset-top, 0px) -
+          env(safe-area-inset-bottom, 0px) - 1rem
+      )
+    );
+    margin-inline: auto;
+  }
+
+  /* 移动端聊天只走浮层，禁止内嵌占高 */
+  .game-board-chat,
+  .game-chat-panel:not(.game-chat-panel--sheet) {
+    display: none !important;
   }
 }
 

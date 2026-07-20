@@ -55,8 +55,8 @@ export default function App() {
   const showLobby = mp.phase === 'lobby' && !mp.autoJoining && !mp.joinPreview
 
   return (
-    <div className="app-shell min-h-[100dvh] overflow-x-hidden text-stone-100">
-      <header className="sticky top-0 z-30 border-b border-white/10 bg-black/40 backdrop-blur-md">
+    <div className="app-shell app-shell--with-header min-h-[100dvh] overflow-x-hidden text-stone-100">
+      <header className="app-header sticky top-0 z-30 border-b border-white/10 bg-black/40 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-[var(--page-x)] py-3 sm:gap-4 sm:py-4">
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-base font-bold tracking-tight sm:text-xl">瞬移国际象棋</h1>
