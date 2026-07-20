@@ -26,27 +26,72 @@ function RequestActions({
   onAccept,
   onDecline,
   acceptLabel = '同意',
+  prominent = false,
 }: {
   onAccept: () => void
   onDecline: () => void
   acceptLabel?: string
+  prominent?: boolean
 }) {
   return (
-    <div className="mt-3 flex gap-2">
+    <div className={`game-request-banner-actions ${prominent ? 'game-request-banner-actions--prominent' : ''}`}>
       <button
         type="button"
         onClick={onDecline}
-        className="min-h-9 flex-1 rounded-lg border border-white/15 text-xs text-white/70 hover:bg-white/5"
+        className="game-request-banner-btn game-request-banner-btn--decline"
       >
         拒绝
       </button>
       <button
         type="button"
         onClick={onAccept}
-        className="min-h-9 flex-1 rounded-lg bg-sky-600 text-xs font-semibold text-white hover:bg-sky-500"
+        className="game-request-banner-btn game-request-banner-btn--accept"
       >
         {acceptLabel}
       </button>
+    </div>
+  )
+}
+
+function ActionBanner({
+  id,
+  icon,
+  title,
+  detail,
+  onAccept,
+  onDecline,
+  acceptLabel = '同意',
+}: {
+  id: string
+  icon: string
+  title: string
+  detail?: string
+  onAccept: () => void
+  onDecline: () => void
+  acceptLabel?: string
+}) {
+  return (
+    <div
+      key={id}
+      className="game-request-banner game-request-banner--action"
+      role="alert"
+      aria-live="assertive"
+    >
+      <div className="game-request-banner-head">
+        <span className="game-request-banner-icon" aria-hidden>
+          {icon}
+        </span>
+        <div className="game-request-banner-copy">
+          <p className="game-request-banner-title">{title}</p>
+          {detail && <p className="game-request-banner-detail">{detail}</p>}
+        </div>
+      </div>
+      <RequestActions
+        prominent
+        onAccept={onAccept}
+        onDecline={onDecline}
+        acceptLabel={acceptLabel}
+      />
     </div>
   )
 }
@@ -75,46 +120,70 @@ export default function GameRequestBanner({
 
   if (pendingOpponentUndoRequest && onAcceptUndo && onDeclineUndo) {
     banners.push(
-      <div key="undo-req" className="game-request-banner game-request-banner--request">
-        <p className="text-sm font-medium text-amber-200">对方请求悔棋，是否同意？</p>
-        <RequestActions onAccept={onAcceptUndo} onDecline={onDeclineUndo} />
-      </div>,
+      <ActionBanner
+        key="undo-req"
+        id="undo-req"
+        icon="↩"
+        title="对方请求悔棋"
+        detail="是否同意撤销上一步？"
+        onAccept={onAcceptUndo}
+        onDecline={onDeclineUndo}
+      />,
     )
   }
 
   if (pendingOpponentRestartRequest && onAcceptRestart && onDeclineRestart) {
     const who = restartFromColor === 'white' ? '白方' : restartFromColor === 'black' ? '黑方' : '对方'
     banners.push(
-      <div key="restart-req" className="game-request-banner game-request-banner--request">
-        <p className="text-sm font-medium text-amber-200">{who} 请求重新开始一局，是否同意？</p>
-        <RequestActions onAccept={onAcceptRestart} onDecline={onDeclineRestart} />
-      </div>,
+      <ActionBanner
+        key="restart-req"
+        id="restart-req"
+        icon="↻"
+        title={`${who} 请求重新开始`}
+        detail="是否同意重开一局？"
+        onAccept={onAcceptRestart}
+        onDecline={onDeclineRestart}
+      />,
     )
   }
 
   if (pendingOpponentPauseRequest && onAcceptPause && onDeclinePause) {
     banners.push(
-      <div key="pause-req" className="game-request-banner game-request-banner--request">
-        <p className="text-sm font-medium text-sky-200">对方请求暂停，是否同意？</p>
-        <p className="mt-1 text-xs text-amber-300/85">同意前，对方棋钟仍会继续倒计时。</p>
-        <RequestActions onAccept={onAcceptPause} onDecline={onDeclinePause} />
-      </div>,
+      <ActionBanner
+        key="pause-req"
+        id="pause-req"
+        icon="⏸"
+        title="对方请求暂停"
+        detail="同意前，对方棋钟仍会继续倒计时。"
+        onAccept={onAcceptPause}
+        onDecline={onDeclinePause}
+      />,
     )
   }
 
   if (pendingOpponentResumeRequest && onAcceptResume && onDeclineResume) {
     banners.push(
-      <div key="resume-req" className="game-request-banner game-request-banner--request">
-        <p className="text-sm font-medium text-sky-200">对方请求恢复对局，是否同意？</p>
-        <RequestActions onAccept={onAcceptResume} onDecline={onDeclineResume} />
-      </div>,
+      <ActionBanner
+        key="resume-req"
+        id="resume-req"
+        icon="▶"
+        title="对方请求恢复对局"
+        detail="是否同意继续下棋？"
+        onAccept={onAcceptResume}
+        onDecline={onDeclineResume}
+      />,
     )
   }
 
   if (pendingMyUndoRequest) {
     banners.push(
       <div key="undo-wait" className="game-request-banner game-request-banner--waiting">
-        <p className="text-sm text-amber-200">悔棋请求中… 等待对方回应</p>
+        <div className="game-request-banner-head">
+          <span className="game-request-banner-icon game-request-banner-icon--muted" aria-hidden>
+            ↩
+          </span>
+          <p className="game-request-banner-title">悔棋请求中… 等待对方回应</p>
+        </div>
       </div>,
     )
   }
@@ -122,7 +191,12 @@ export default function GameRequestBanner({
   if (pendingMyRestartRequest) {
     banners.push(
       <div key="restart-wait" className="game-request-banner game-request-banner--waiting">
-        <p className="text-sm text-amber-200">重开请求中… 等待对方回应</p>
+        <div className="game-request-banner-head">
+          <span className="game-request-banner-icon game-request-banner-icon--muted" aria-hidden>
+            ↻
+          </span>
+          <p className="game-request-banner-title">重开请求中… 等待对方回应</p>
+        </div>
       </div>,
     )
   }
@@ -130,8 +204,15 @@ export default function GameRequestBanner({
   if (pendingMyPauseRequest) {
     banners.push(
       <div key="pause-wait" className="game-request-banner game-request-banner--waiting">
-        <p className="text-sm text-amber-200">暂停请求中… 等待对方回应</p>
-        <p className="mt-1 text-xs text-white/50">对方同意前，你的棋钟仍会继续倒计时。</p>
+        <div className="game-request-banner-head">
+          <span className="game-request-banner-icon game-request-banner-icon--muted" aria-hidden>
+            ⏸
+          </span>
+          <div className="game-request-banner-copy">
+            <p className="game-request-banner-title">暂停请求中… 等待对方回应</p>
+            <p className="game-request-banner-detail">对方同意前，你的棋钟仍会继续倒计时。</p>
+          </div>
+        </div>
       </div>,
     )
   }
@@ -139,7 +220,12 @@ export default function GameRequestBanner({
   if (pendingMyResumeRequest) {
     banners.push(
       <div key="resume-wait" className="game-request-banner game-request-banner--waiting">
-        <p className="text-sm text-amber-200">恢复请求中… 等待对方回应</p>
+        <div className="game-request-banner-head">
+          <span className="game-request-banner-icon game-request-banner-icon--muted" aria-hidden>
+            ▶
+          </span>
+          <p className="game-request-banner-title">恢复请求中… 等待对方回应</p>
+        </div>
       </div>,
     )
   }
@@ -147,16 +233,20 @@ export default function GameRequestBanner({
   if (clockPaused) {
     banners.push(
       <div key="paused" className="game-request-banner game-request-banner--paused">
-        <p className="flex items-center gap-2 text-sm font-medium text-orange-200">
-          <span aria-hidden>⏸</span>
-          对局已暂停
-        </p>
-        <p className="mt-1 text-xs text-white/55">棋盘仍可查看，暂不可走棋。点击「请求恢复」继续。</p>
+        <div className="game-request-banner-head">
+          <span className="game-request-banner-icon game-request-banner-icon--muted" aria-hidden>
+            ⏸
+          </span>
+          <div className="game-request-banner-copy">
+            <p className="game-request-banner-title">对局已暂停</p>
+            <p className="game-request-banner-detail">棋盘仍可查看，暂不可走棋。点击「请求恢复」继续。</p>
+          </div>
+        </div>
       </div>,
     )
   }
 
   if (banners.length === 0) return null
 
-  return <div className="game-request-banner-stack space-y-2">{banners}</div>
+  return <div className="game-board-alerts game-request-banner-stack">{banners}</div>
 }

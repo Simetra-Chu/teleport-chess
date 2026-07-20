@@ -289,21 +289,142 @@ body {
 .game-request-banner,
 .pause-status-banner {
   width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  border-radius: 1rem;
+  border: 1px solid transparent;
+  padding: 0.875rem 1rem;
+}
+
+.game-board-alerts {
+  width: 100%;
+  max-width: 100%;
+  margin-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+@media (min-width: 1024px) {
+  .game-board-alerts {
+    max-width: min(100%, var(--board-max));
+    margin-inline: auto;
+  }
+}
+
+.game-request-banner-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.game-request-banner-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.game-request-banner-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.75rem;
+  font-size: 1.125rem;
+  line-height: 1;
+  background: rgba(251, 191, 36, 0.18);
+  color: rgb(253, 224, 71);
+}
+
+.game-request-banner-icon--muted {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.game-request-banner-title {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: rgb(254, 243, 199);
+}
+
+.game-request-banner-detail {
+  margin-top: 0.25rem;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.62);
+  overflow-wrap: anywhere;
+}
+
+.game-request-banner-actions {
+  display: flex;
+  gap: 0.625rem;
+  margin-top: 0.875rem;
+  width: 100%;
+}
+
+.game-request-banner-actions--prominent {
+  margin-top: 1rem;
+}
+
+.game-request-banner-btn {
+  min-height: 2.75rem;
+  flex: 1 1 0;
+  min-width: 0;
   border-radius: 0.75rem;
   border: 1px solid transparent;
-  padding: 0.75rem 1rem;
+  padding: 0.625rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.25;
+  transition: background-color 0.15s, border-color 0.15s, transform 0.1s;
+}
+
+.game-request-banner-btn:active {
+  transform: scale(0.98);
+}
+
+.game-request-banner-btn--decline {
+  border-color: rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.82);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.game-request-banner-btn--decline:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.game-request-banner-btn--accept {
+  border-color: rgba(34, 197, 94, 0.45);
+  color: white;
+  background: linear-gradient(180deg, rgb(34, 197, 94), rgb(22, 163, 74));
+  box-shadow: 0 4px 14px rgba(34, 197, 94, 0.28);
+}
+
+.game-request-banner-btn--accept:hover {
+  background: linear-gradient(180deg, rgb(74, 222, 128), rgb(34, 197, 94));
 }
 
 .game-request-banner--paused,
 .pause-status-banner--paused {
-  border-color: rgba(249, 115, 22, 0.35);
-  background: rgba(124, 45, 18, 0.25);
+  border-color: rgba(249, 115, 22, 0.45);
+  background: rgba(124, 45, 18, 0.32);
+}
+
+.game-request-banner--paused .game-request-banner-title {
+  color: rgb(254, 215, 170);
 }
 
 .game-request-banner--waiting,
 .pause-status-banner--waiting {
-  border-color: rgba(251, 191, 36, 0.35);
-  background: rgba(120, 53, 15, 0.22);
+  border-color: rgba(251, 191, 36, 0.45);
+  background: rgba(120, 53, 15, 0.32);
+}
+
+.game-request-banner--waiting .game-request-banner-title {
+  color: rgb(253, 224, 71);
 }
 
 .game-request-banner--request,
@@ -312,8 +433,44 @@ body {
   background: rgba(12, 74, 110, 0.28);
 }
 
+.game-request-banner--action {
+  border: 2px solid rgba(251, 191, 36, 0.72);
+  background: linear-gradient(180deg, rgba(120, 53, 15, 0.72), rgba(69, 26, 3, 0.88));
+  box-shadow:
+    0 0 0 1px rgba(251, 191, 36, 0.18),
+    0 8px 28px rgba(251, 191, 36, 0.16);
+  animation: game-request-banner-glow 2.2s ease-in-out infinite;
+}
+
+.game-request-banner--action .game-request-banner-title {
+  font-size: 1rem;
+  color: rgb(255, 251, 235);
+}
+
+.game-request-banner--action .game-request-banner-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  font-size: 1.25rem;
+  background: rgba(251, 191, 36, 0.24);
+}
+
+@keyframes game-request-banner-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px rgba(251, 191, 36, 0.18),
+      0 8px 28px rgba(251, 191, 36, 0.14);
+  }
+  50% {
+    box-shadow:
+      0 0 0 2px rgba(251, 191, 36, 0.42),
+      0 10px 32px rgba(251, 191, 36, 0.28);
+  }
+}
+
 .game-request-banner-stack {
   width: 100%;
+  max-width: 100%;
 }
 
 .room-invite-inline,

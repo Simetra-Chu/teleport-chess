@@ -574,6 +574,37 @@ export default function GameView({
               </div>
             )}
           </div>
+
+          {isOnline && roomStatus === 'playing' && (
+            <GameRequestBanner
+              clockPaused={clockPaused}
+              pendingMyPauseRequest={pendingMyPauseRequest}
+              pendingMyResumeRequest={pendingMyResumeRequest}
+              pendingOpponentPauseRequest={!!pendingOpponentPauseRequest}
+              pendingOpponentResumeRequest={!!pendingOpponentResumeRequest}
+              pendingMyUndoRequest={pendingMyUndoRequest}
+              pendingMyRestartRequest={pendingMyRestartRequest}
+              pendingOpponentUndoRequest={!!pendingOpponentUndoRequest}
+              pendingOpponentRestartRequest={!!pendingOpponentRestartRequest}
+              restartFromColor={pendingOpponentRestartRequest?.from ?? null}
+              onAcceptPause={onAcceptPause ? respond(onAcceptPause) : undefined}
+              onDeclinePause={onDeclinePause ? respond(onDeclinePause) : undefined}
+              onAcceptResume={onAcceptResume ? respond(onAcceptResume) : undefined}
+              onDeclineResume={onDeclineResume ? respond(onDeclineResume) : undefined}
+              onAcceptUndo={onAcceptUndo ? respond(onAcceptUndo) : undefined}
+              onDeclineUndo={onDeclineUndo ? respond(onDeclineUndo) : undefined}
+              onAcceptRestart={
+                onRespondToRestartRequest
+                  ? respond(() => onRespondToRestartRequest(true))
+                  : undefined
+              }
+              onDeclineRestart={
+                onRespondToRestartRequest
+                  ? respond(() => onRespondToRestartRequest(false))
+                  : undefined
+              }
+            />
+          )}
         </section>
 
         {/* 手机：下方信息/记录；桌面：右侧边栏 */}
@@ -627,37 +658,6 @@ export default function GameView({
             <p className="text-center text-[11px] text-white/35">
               包干制 · 每方 {timePerSideMinutes} 分钟
             </p>
-          )}
-
-          {isOnline && roomStatus === 'playing' && (
-            <GameRequestBanner
-              clockPaused={clockPaused}
-              pendingMyPauseRequest={pendingMyPauseRequest}
-              pendingMyResumeRequest={pendingMyResumeRequest}
-              pendingOpponentPauseRequest={!!pendingOpponentPauseRequest}
-              pendingOpponentResumeRequest={!!pendingOpponentResumeRequest}
-              pendingMyUndoRequest={pendingMyUndoRequest}
-              pendingMyRestartRequest={pendingMyRestartRequest}
-              pendingOpponentUndoRequest={!!pendingOpponentUndoRequest}
-              pendingOpponentRestartRequest={!!pendingOpponentRestartRequest}
-              restartFromColor={pendingOpponentRestartRequest?.from ?? null}
-              onAcceptPause={onAcceptPause ? respond(onAcceptPause) : undefined}
-              onDeclinePause={onDeclinePause ? respond(onDeclinePause) : undefined}
-              onAcceptResume={onAcceptResume ? respond(onAcceptResume) : undefined}
-              onDeclineResume={onDeclineResume ? respond(onDeclineResume) : undefined}
-              onAcceptUndo={onAcceptUndo ? respond(onAcceptUndo) : undefined}
-              onDeclineUndo={onDeclineUndo ? respond(onDeclineUndo) : undefined}
-              onAcceptRestart={
-                onRespondToRestartRequest
-                  ? respond(() => onRespondToRestartRequest(true))
-                  : undefined
-              }
-              onDeclineRestart={
-                onRespondToRestartRequest
-                  ? respond(() => onRespondToRestartRequest(false))
-                  : undefined
-              }
-            />
           )}
 
           {!myTurn && canPlay && !gameOver && (
