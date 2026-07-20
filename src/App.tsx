@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import JoinRoomConfirmPanel from './components/JoinRoomConfirmPanel'
 import GameView from './components/GameView'
 import LobbyPanel from './components/LobbyPanel'
 import AutoJoinSplash from './components/AutoJoinSplash'
@@ -10,6 +11,7 @@ export default function App() {
   const mp = useMultiplayer()
   const { autoJoinError, clearAutoJoinError } = mp
   const [lobbyError, setLobbyError] = useState<string | null>(null)
+  const [joinConfirmError, setJoinConfirmError] = useState<string | null>(null)
   const [tutorialOpen, setTutorialOpen] = useState(false)
 
   useEffect(() => {
@@ -30,13 +32,27 @@ export default function App() {
   const handleJoin = async () => {
     setLobbyError(null)
     try {
-      await mp.joinRoom()
+      await mp.previewRoom()
     } catch (e) {
-      setLobbyError(e instanceof Error ? e.message : '加入房间失败')
+      setLobbyError(e instanceof Error ? e.message : '查询房间失败')
     }
   }
 
-  const showLobby = mp.phase === 'lobby' && !mp.autoJoining
+  const handleConfirmJoin = async () => {
+    setJoinConfirmError(null)
+    try {
+      await mp.confirmJoinRoom()
+    } catch (e) {
+      setJoinConfirmError(e instanceof Error ? e.message : '加入房间失败')
+    }
+  }
+
+  const handleCancelJoinPreview = () => {
+    setJoinConfirmError(null)
+    mp.cancelJoinPreview()
+  }
+
+  const showLobby = mp.phase === 'lobby' && !mp.autoJoining && !mp.joinPreview
 
   return (
     <div className="app-shell min-h-[100dvh] overflow-x-hidden text-stone-100">
@@ -46,8 +62,10 @@ export default function App() {
             <h1 className="truncate text-base font-bold tracking-tight sm:text-xl">瞬移国际象棋</h1>
             <p className="truncate text-[11px] text-white/45 sm:text-xs">
               {mp.autoJoining
-                ? `正在加入房间 ${mp.autoJoinRoomCode ?? ''}…`
-                : mp.phase === 'lobby'
+                ? `正在加载房间 ${mp.autoJoinRoomCode ?? ''} 规则…`
+                : mp.joinPreview
+                  ? `确认加入房间 ${mp.joinPreview.roomCode}`
+                  : mp.phase === 'lobby'
                   ? '联机对战 · 创建或加入房间'
                   : `房间 ${mp.roomCode} · ${
                       mp.roomStatus === 'waiting'
@@ -84,6 +102,14 @@ export default function App() {
 
       {mp.autoJoining ? (
         <AutoJoinSplash roomCode={mp.autoJoinRoomCode ?? '----'} />
+      ) : mp.joinPreview ? (
+        <JoinRoomConfirmPanel
+          preview={mp.joinPreview}
+          loading={mp.loading}
+          error={joinConfirmError ?? mp.joinPreviewError}
+          onConfirm={handleConfirmJoin}
+          onCancel={handleCancelJoinPreview}
+        />
       ) : showLobby ? (
         <LobbyPanel
           joinInput={mp.joinInput}

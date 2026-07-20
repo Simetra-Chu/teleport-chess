@@ -97,7 +97,7 @@ export default function LobbyPanel({
                   onClick={onJoinRoom}
                   className="join-room-btn min-h-11 shrink-0 rounded-xl bg-purple-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-purple-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  加入
+                  {loading ? '查询中…' : '查看规则'}
                 </button>
               </div>
             </section>

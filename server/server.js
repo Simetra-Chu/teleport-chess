@@ -286,6 +286,37 @@ io.on('connection', (socket) => {
     }
   })
 
+  socket.on('previewRoom', (payload = {}, ack) => {
+    try {
+      const code = String(payload.roomCode || '').trim()
+      if (!/^\d{4}$/.test(code)) {
+        return reply(ack, { ok: false, error: '请输入 4 位数字房间号' })
+      }
+      if (socketRoom.has(socket.id)) {
+        return reply(ack, { ok: false, error: '你已在房间中，请先离开' })
+      }
+
+      const room = rooms.get(code)
+      if (!room) {
+        return reply(ack, { ok: false, error: '房间不存在' })
+      }
+      if (room.guestId) {
+        return reply(ack, { ok: false, error: '房间已满' })
+      }
+
+      reply(ack, {
+        ok: true,
+        roomCode: code,
+        config: room.config,
+        timePerSideMinutes: room.timePerSideMinutes,
+        status: room.status,
+      })
+      console.log(`[previewRoom] ${code} by ${socket.id}`)
+    } catch (err) {
+      reply(ack, { ok: false, error: err.message || '查询房间失败' })
+    }
+  })
+
   socket.on('joinRoom', (payload = {}, ack) => {
     try {
       const code = String(payload.roomCode || '').trim()

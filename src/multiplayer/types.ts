@@ -122,6 +122,20 @@ export interface CreateRoomAck extends RoomAckBase {
   paused?: boolean
 }
 
+export interface PreviewRoomAck extends RoomAckBase {
+  roomCode?: string
+  config?: import('../chessEngine').TeleportConfig
+  timePerSideMinutes?: number
+  status?: RoomStatus
+}
+
+export interface JoinRoomPreview {
+  roomCode: string
+  config: import('../chessEngine').TeleportConfig
+  timePerSideMinutes: number
+  status: RoomStatus
+}
+
 export interface JoinRoomAck extends CreateRoomAck {}
 
 export interface SyncMovePayload {

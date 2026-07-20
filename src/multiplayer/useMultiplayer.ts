@@ -15,12 +15,14 @@ import type {
   GameOverEvent,
   GameResult,
   JoinRoomAck,
+  JoinRoomPreview,
   OpponentRequestEvent,
   OpponentSyncEvent,
   PauseAcceptedEvent,
   PauseDeclinedEvent,
   PauseRequestEvent,
   PlayerColor,
+  PreviewRoomAck,
   RequestRespondedEvent,
   ResumeAcceptedEvent,
   ResumeDeclinedEvent,
@@ -46,6 +48,9 @@ export interface MultiplayerState {
   autoJoinRoomCode: string | null
   autoJoinError: string | null
   clearAutoJoinError: () => void
+  joinPreview: JoinRoomPreview | null
+  joinPreviewError: string | null
+  clearJoinPreviewError: () => void
   gameResult: GameResult | null
   lastMoveBy: PlayerColor | null
   canRequestUndo: boolean
@@ -70,6 +75,9 @@ export interface MultiplayerState {
   setJoinInput: (v: string) => void
   setConfig: React.Dispatch<React.SetStateAction<TeleportConfig>>
   createRoom: () => Promise<void>
+  previewRoom: (code?: string) => Promise<void>
+  confirmJoinRoom: () => Promise<void>
+  cancelJoinPreview: () => void
   joinRoom: () => Promise<void>
   joinRoomByCode: (code: string) => Promise<void>
   leaveRoom: () => void
@@ -107,6 +115,8 @@ export function useMultiplayer(): MultiplayerState & {
   const [autoJoining, setAutoJoining] = useState(false)
   const [autoJoinRoomCode, setAutoJoinRoomCode] = useState<string | null>(() => getRoomFromUrl())
   const [autoJoinError, setAutoJoinError] = useState<string | null>(null)
+  const [joinPreview, setJoinPreview] = useState<JoinRoomPreview | null>(null)
+  const [joinPreviewError, setJoinPreviewError] = useState<string | null>(null)
   const autoJoinAttempted = useRef(false)
   const [gameResult, setGameResult] = useState<GameResult | null>(null)
   const [lastMoveBy, setLastMoveBy] = useState<PlayerColor | null>(null)
@@ -153,6 +163,8 @@ export function useMultiplayer(): MultiplayerState & {
     setConfig(DEFAULT_CONFIG)
     setGameState(initGame(DEFAULT_CONFIG))
     setJoinInput('')
+    setJoinPreview(null)
+    setJoinPreviewError(null)
     setGameResult(null)
     setLastMoveBy(null)
     setPendingOpponentUndoRequest(null)
@@ -185,6 +197,8 @@ export function useMultiplayer(): MultiplayerState & {
       setRoomInUrl(code)
       setPhase('room')
       setRoomCode(code)
+      setJoinPreview(null)
+      setJoinPreviewError(null)
       setPlayerColor(color)
       setConfig(cfg)
       setGameState(state)
@@ -436,6 +450,31 @@ export function useMultiplayer(): MultiplayerState & {
     }
   }, [config, enterRoom, getSelectedTimeMinutes])
 
+  const previewRoom = useCallback(async (code?: string) => {
+    const normalized = (code ?? joinInput).trim()
+    if (!/^\d{4}$/.test(normalized)) {
+      throw new Error('请输入 4 位数字房间号')
+    }
+
+    setLoading(true)
+    setJoinPreviewError(null)
+    try {
+      await waitForSocketConnected()
+      const res = await emitAck<PreviewRoomAck>('previewRoom', { roomCode: normalized })
+      if (!res.ok || !res.roomCode || !res.config) {
+        throw new Error(res.error || '查询房间失败')
+      }
+      setJoinPreview({
+        roomCode: res.roomCode,
+        config: res.config,
+        timePerSideMinutes: res.timePerSideMinutes ?? DEFAULT_TIME_MINUTES,
+        status: res.status ?? 'waiting',
+      })
+    } finally {
+      setLoading(false)
+    }
+  }, [joinInput])
+
   const joinRoomByCode = useCallback(
     async (code: string) => {
       const normalized = code.trim()
@@ -458,8 +497,25 @@ export function useMultiplayer(): MultiplayerState & {
   )
 
   const joinRoom = useCallback(async () => {
-    await joinRoomByCode(joinInput)
-  }, [joinInput, joinRoomByCode])
+    await previewRoom(joinInput)
+  }, [joinInput, previewRoom])
+
+  const confirmJoinRoom = useCallback(async () => {
+    if (!joinPreview) return
+    setJoinPreviewError(null)
+    try {
+      await joinRoomByCode(joinPreview.roomCode)
+    } catch (err) {
+      setJoinPreviewError(err instanceof Error ? err.message : '加入房间失败')
+      throw err
+    }
+  }, [joinPreview, joinRoomByCode])
+
+  const cancelJoinPreview = useCallback(() => {
+    setJoinPreview(null)
+    setJoinPreviewError(null)
+    clearRoomFromUrl()
+  }, [])
 
   useEffect(() => {
     if (autoJoinAttempted.current) return
@@ -471,16 +527,17 @@ export function useMultiplayer(): MultiplayerState & {
     setAutoJoinRoomCode(code)
     setAutoJoining(true)
 
-    void joinRoomByCode(code)
+    void previewRoom(code)
       .catch((err) => {
-        setAutoJoinError(err instanceof Error ? err.message : '加入房间失败')
+        setAutoJoinError(err instanceof Error ? err.message : '查询房间失败')
       })
       .finally(() => {
         setAutoJoining(false)
       })
-  }, [joinRoomByCode])
+  }, [previewRoom])
 
   const clearAutoJoinError = useCallback(() => setAutoJoinError(null), [])
+  const clearJoinPreviewError = useCallback(() => setJoinPreviewError(null), [])
 
   const leaveRoom = useCallback(() => {
     emitAck('leaveRoom')
@@ -644,6 +701,9 @@ export function useMultiplayer(): MultiplayerState & {
     autoJoinRoomCode,
     autoJoinError,
     clearAutoJoinError,
+    joinPreview,
+    joinPreviewError,
+    clearJoinPreviewError,
     gameResult,
     lastMoveBy,
     canRequestUndo,
@@ -668,6 +728,9 @@ export function useMultiplayer(): MultiplayerState & {
     setJoinInput,
     setConfig,
     createRoom,
+    previewRoom,
+    confirmJoinRoom,
+    cancelJoinPreview,
     joinRoom,
     joinRoomByCode,
     leaveRoom,
