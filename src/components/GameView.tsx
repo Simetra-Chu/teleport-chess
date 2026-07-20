@@ -35,7 +35,7 @@ import OpponentRequestDialog from './OpponentRequestDialog'
 import UndoRequestDialog from './UndoRequestDialog'
 import RoomInviteShare from './RoomInviteShare'
 import ChessClockDisplay from './ChessClockDisplay'
-import PauseResumeRequestDialog from './PauseResumeRequestDialog'
+import PauseStatusBanner from './PauseStatusBanner'
 import type {
   GameResult,
   OpponentRequestEvent,
@@ -210,12 +210,6 @@ export default function GameView({
       setMessage(`${winner}获胜（对手超时）`)
     }
   }, [timedOut, gameResult])
-
-  useEffect(() => {
-    if (clockPaused && roomStatus === 'playing') {
-      setMessage('对局已暂停')
-    }
-  }, [clockPaused, roomStatus])
 
   const applyLocalOutcome = useCallback(
     (next: GameState, moveMsg: string) => {
@@ -551,18 +545,6 @@ export default function GameView({
                 />
               </div>
             )}
-            {clockPaused && roomStatus === 'playing' && !gameOver && (
-              <div className="chess-board-overlay">
-                <div className="absolute inset-0 z-10 flex items-center justify-center rounded-[10px] bg-black/45 backdrop-blur-[1px]">
-                  <div className="mx-4 rounded-2xl border border-orange-500/35 bg-[#161622]/95 px-6 py-5 text-center shadow-2xl">
-                    <p className="text-3xl">⏸</p>
-                    <h3 className="mt-2 text-lg font-bold text-orange-300">对局已暂停</h3>
-                    <p className="mt-1 text-sm text-white/60">双方均无法走棋，点击「请求恢复」继续</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {resigned && gameResult && (
               <div className="chess-board-overlay">
                 <GameOverOverlay
@@ -639,6 +621,52 @@ export default function GameView({
             <p className="text-center text-[11px] text-white/35">
               包干制 · 每方 {timePerSideMinutes} 分钟
             </p>
+          )}
+
+          {isOnline && roomStatus === 'playing' && (
+            <PauseStatusBanner
+              clockPaused={clockPaused}
+              pendingMyPauseRequest={pendingMyPauseRequest}
+              pendingMyResumeRequest={pendingMyResumeRequest}
+              pendingOpponentPauseRequest={!!pendingOpponentPauseRequest}
+              pendingOpponentResumeRequest={!!pendingOpponentResumeRequest}
+              onAcceptPause={
+                onAcceptPause
+                  ? () => {
+                      void onAcceptPause().catch((e) =>
+                        setMessage(e instanceof Error ? e.message : '回应失败'),
+                      )
+                    }
+                  : undefined
+              }
+              onDeclinePause={
+                onDeclinePause
+                  ? () => {
+                      void onDeclinePause().catch((e) =>
+                        setMessage(e instanceof Error ? e.message : '回应失败'),
+                      )
+                    }
+                  : undefined
+              }
+              onAcceptResume={
+                onAcceptResume
+                  ? () => {
+                      void onAcceptResume().catch((e) =>
+                        setMessage(e instanceof Error ? e.message : '回应失败'),
+                      )
+                    }
+                  : undefined
+              }
+              onDeclineResume={
+                onDeclineResume
+                  ? () => {
+                      void onDeclineResume().catch((e) =>
+                        setMessage(e instanceof Error ? e.message : '回应失败'),
+                      )
+                    }
+                  : undefined
+              }
+            />
           )}
 
           {!myTurn && canPlay && !gameOver && (
@@ -773,37 +801,6 @@ export default function GameView({
         />
       )}
 
-      {pendingOpponentPauseRequest && onAcceptPause && onDeclinePause && (
-        <PauseResumeRequestDialog
-          kind="pause"
-          onAccept={() => {
-            void onAcceptPause().catch((e) =>
-              setMessage(e instanceof Error ? e.message : '回应失败'),
-            )
-          }}
-          onReject={() => {
-            void onDeclinePause().catch((e) =>
-              setMessage(e instanceof Error ? e.message : '回应失败'),
-            )
-          }}
-        />
-      )}
-
-      {pendingOpponentResumeRequest && onAcceptResume && onDeclineResume && (
-        <PauseResumeRequestDialog
-          kind="resume"
-          onAccept={() => {
-            void onAcceptResume().catch((e) =>
-              setMessage(e instanceof Error ? e.message : '回应失败'),
-            )
-          }}
-          onReject={() => {
-            void onDeclineResume().catch((e) =>
-              setMessage(e instanceof Error ? e.message : '回应失败'),
-            )
-          }}
-        />
-      )}
     </main>
   )
 }
