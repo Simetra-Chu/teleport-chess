@@ -503,6 +503,21 @@ export default function GameView({
           ? 'text-orange-400'
           : 'text-emerald-400'
 
+  const chatPanel =
+    isOnline && onSendChatMessage ? (
+      <GameChatPanel
+        messages={chatMessages}
+        playerColor={playerColor}
+        disabled={!canChat}
+        disabledHint={
+          roomStatus === 'waiting'
+            ? '等待对手加入后可聊天'
+            : '当前无法发送消息'
+        }
+        onSend={onSendChatMessage}
+      />
+    ) : null
+
   return (
     <main className="game-page">
       <div className="game-layout">
@@ -613,6 +628,8 @@ export default function GameView({
               }
             />
           )}
+
+          {chatPanel && <div className="game-board-chat">{chatPanel}</div>}
         </section>
 
         {/* 手机：下方信息/记录；桌面：右侧边栏 */}
@@ -682,20 +699,6 @@ export default function GameView({
 
           {isOnline && roomStatus === 'waiting' && playerColor === 'white' && roomCode && (
             <RoomInviteShare roomCode={roomCode} variant="inline" />
-          )}
-
-          {isOnline && onSendChatMessage && (
-            <GameChatPanel
-              messages={chatMessages}
-              playerColor={playerColor}
-              disabled={!canChat}
-              disabledHint={
-                roomStatus === 'waiting'
-                  ? '等待对手加入后可聊天'
-                  : '当前无法发送消息'
-              }
-              onSend={onSendChatMessage}
-            />
           )}
 
           <p className="rounded-lg border border-white/10 bg-black/30 px-3 py-2.5 text-center text-xs text-white/70 sm:text-sm">

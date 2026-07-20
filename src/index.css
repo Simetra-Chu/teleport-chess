@@ -93,6 +93,12 @@ body {
   min-width: 0;
 }
 
+@media (max-width: 1023px) {
+  .game-info-column {
+    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
 @media (min-width: 1024px) {
   .game-info-column {
     position: sticky;
@@ -305,10 +311,34 @@ body {
   gap: 0.625rem;
 }
 
+.game-board-chat {
+  width: 100%;
+  max-width: 100%;
+  margin-top: 0.75rem;
+}
+
 @media (min-width: 1024px) {
-  .game-board-alerts {
+  .game-board-alerts,
+  .game-board-chat {
     max-width: min(100%, var(--board-max));
     margin-inline: auto;
+  }
+}
+
+@media (max-width: 1023px) {
+  .game-board-chat {
+    position: relative;
+    z-index: 5;
+  }
+
+  .game-board-chat .game-chat-messages {
+    min-height: 5.5rem;
+    max-height: 10rem;
+  }
+
+  .game-board-chat .game-chat-panel {
+    border-color: rgba(168, 85, 247, 0.42);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
   }
 }
 
