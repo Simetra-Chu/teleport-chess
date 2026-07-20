@@ -258,6 +258,34 @@ body {
   background: rgba(12, 74, 110, 0.45);
 }
 
+.game-control-btn--pause {
+  border-color: rgba(56, 189, 248, 0.35);
+  color: rgb(125, 211, 252);
+  background: rgba(12, 74, 110, 0.25);
+}
+
+.game-control-btn--pause:not(:disabled):hover {
+  background: rgba(12, 74, 110, 0.45);
+}
+
+.chess-clock-row--active {
+  box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.25);
+}
+
+@keyframes chess-clock-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.72;
+  }
+}
+
+.chess-clock-digit--pulse {
+  animation: chess-clock-pulse 1s ease-in-out infinite;
+}
+
 .room-invite-inline,
 .room-invite-card {
   width: 100%;

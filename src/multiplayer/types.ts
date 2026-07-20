@@ -33,6 +33,55 @@ export interface GameEndEvent {
   loser: PlayerColor
 }
 
+export interface GameOverEvent {
+  roomCode: string
+  reason: 'timeout'
+  winner: PlayerColor
+  loser: PlayerColor
+  whiteTime: number
+  blackTime: number
+}
+
+export interface ClockSyncEvent {
+  roomCode: string
+  whiteTime: number
+  blackTime: number
+  paused: boolean
+  timePerSideMinutes?: number
+}
+
+export interface PauseRequestEvent {
+  roomCode: string
+  from: PlayerColor
+}
+
+export interface PauseAcceptedEvent extends ClockSyncEvent {
+  from: PlayerColor
+  by: PlayerColor
+}
+
+export interface PauseDeclinedEvent {
+  roomCode: string
+  from: PlayerColor
+  by: PlayerColor
+}
+
+export interface ResumeRequestEvent {
+  roomCode: string
+  from: PlayerColor
+}
+
+export interface ResumeAcceptedEvent extends ClockSyncEvent {
+  from: PlayerColor
+  by: PlayerColor
+}
+
+export interface ResumeDeclinedEvent {
+  roomCode: string
+  from: PlayerColor
+  by: PlayerColor
+}
+
 export interface OpponentRequestEvent {
   roomCode: string
   type: OpponentRequestType
@@ -45,10 +94,14 @@ export interface RequestRespondedEvent {
   accept: boolean
   by: PlayerColor
   gameState?: import('../chessEngine').GameState
+  whiteTime?: number
+  blackTime?: number
+  paused?: boolean
+  timePerSideMinutes?: number
 }
 
 export interface GameResult {
-  reason: 'resign'
+  reason: 'resign' | 'timeout'
   winner: PlayerColor
 }
 
@@ -63,6 +116,10 @@ export interface CreateRoomAck extends RoomAckBase {
   config?: import('../chessEngine').TeleportConfig
   gameState?: import('../chessEngine').GameState
   status?: RoomStatus
+  timePerSideMinutes?: number
+  whiteTime?: number
+  blackTime?: number
+  paused?: boolean
 }
 
 export interface JoinRoomAck extends CreateRoomAck {}

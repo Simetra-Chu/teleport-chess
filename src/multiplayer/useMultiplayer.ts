@@ -1,17 +1,30 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { initGame, type GameState, type TeleportConfig } from '../chessEngine'
 import { clearRoomFromUrl, getRoomFromUrl, setRoomInUrl } from '../utils/roomLink'
+import {
+  DEFAULT_TIME_MINUTES,
+  parseTimeMinutes,
+  type TimePreset,
+} from '../utils/clockFormat'
 import { emitAck, getSocket, waitForSocketConnected } from './socket'
 import { DEFAULT_CONFIG } from './gameHelpers'
 import type {
   CreateRoomAck,
+  ClockSyncEvent,
   GameEndEvent,
+  GameOverEvent,
   GameResult,
   JoinRoomAck,
   OpponentRequestEvent,
   OpponentSyncEvent,
+  PauseAcceptedEvent,
+  PauseDeclinedEvent,
+  PauseRequestEvent,
   PlayerColor,
   RequestRespondedEvent,
+  ResumeAcceptedEvent,
+  ResumeDeclinedEvent,
+  ResumeRequestEvent,
   RoomStatus,
   UndoAcceptedEvent,
   UndoDeclinedEvent,
@@ -41,6 +54,19 @@ export interface MultiplayerState {
   pendingOpponentRestartRequest: OpponentRequestEvent | null
   pendingMyRestartRequest: boolean
   requestNotice: string | null
+  timePreset: TimePreset
+  customMinutes: string
+  setTimePreset: (v: TimePreset) => void
+  setCustomMinutes: (v: string) => void
+  timePerSideMinutes: number
+  whiteTime: number
+  blackTime: number
+  clockPaused: boolean
+  activeClockColor: PlayerColor | null
+  pendingOpponentPauseRequest: PauseRequestEvent | null
+  pendingMyPauseRequest: boolean
+  pendingOpponentResumeRequest: ResumeRequestEvent | null
+  pendingMyResumeRequest: boolean
   setJoinInput: (v: string) => void
   setConfig: React.Dispatch<React.SetStateAction<TeleportConfig>>
   createRoom: () => Promise<void>
@@ -53,6 +79,12 @@ export interface MultiplayerState {
   declineUndo: () => Promise<void>
   requestRestart: () => Promise<void>
   respondToRestartRequest: (accept: boolean) => Promise<void>
+  requestPause: () => Promise<void>
+  acceptPause: () => Promise<void>
+  declinePause: () => Promise<void>
+  requestResume: () => Promise<void>
+  acceptResume: () => Promise<void>
+  declineResume: () => Promise<void>
   clearRequestNotice: () => void
   recordLastMove: (by: PlayerColor) => void
   isOnline: boolean
@@ -85,8 +117,32 @@ export function useMultiplayer(): MultiplayerState & {
     useState<OpponentRequestEvent | null>(null)
   const [pendingMyRestartRequest, setPendingMyRestartRequest] = useState(false)
   const [requestNotice, setRequestNotice] = useState<string | null>(null)
+  const [timePreset, setTimePreset] = useState<TimePreset>(DEFAULT_TIME_MINUTES)
+  const [customMinutes, setCustomMinutes] = useState(String(DEFAULT_TIME_MINUTES))
+  const [timePerSideMinutes, setTimePerSideMinutes] = useState(DEFAULT_TIME_MINUTES)
+  const [whiteTime, setWhiteTime] = useState(DEFAULT_TIME_MINUTES * 60)
+  const [blackTime, setBlackTime] = useState(DEFAULT_TIME_MINUTES * 60)
+  const [clockPaused, setClockPaused] = useState(false)
+  const [pendingOpponentPauseRequest, setPendingOpponentPauseRequest] =
+    useState<PauseRequestEvent | null>(null)
+  const [pendingMyPauseRequest, setPendingMyPauseRequest] = useState(false)
+  const [pendingOpponentResumeRequest, setPendingOpponentResumeRequest] =
+    useState<ResumeRequestEvent | null>(null)
+  const [pendingMyResumeRequest, setPendingMyResumeRequest] = useState(false)
   const playerColorRef = useRef<PlayerColor | null>(null)
   playerColorRef.current = playerColor
+
+  const applyClock = useCallback((data: Partial<ClockSyncEvent> & { timePerSideMinutes?: number }) => {
+    if (typeof data.whiteTime === 'number') setWhiteTime(data.whiteTime)
+    if (typeof data.blackTime === 'number') setBlackTime(data.blackTime)
+    if (typeof data.paused === 'boolean') setClockPaused(data.paused)
+    if (typeof data.timePerSideMinutes === 'number') setTimePerSideMinutes(data.timePerSideMinutes)
+  }, [])
+
+  const getSelectedTimeMinutes = useCallback(() => {
+    if (timePreset === 'custom') return parseTimeMinutes(customMinutes, DEFAULT_TIME_MINUTES)
+    return timePreset
+  }, [timePreset, customMinutes])
 
   const resetToLobby = useCallback((msg?: string) => {
     clearRoomFromUrl()
@@ -103,12 +159,29 @@ export function useMultiplayer(): MultiplayerState & {
     setPendingMyUndoRequest(false)
     setPendingOpponentRestartRequest(null)
     setPendingMyRestartRequest(false)
+    setPendingOpponentPauseRequest(null)
+    setPendingMyPauseRequest(false)
+    setPendingOpponentResumeRequest(null)
+    setPendingMyResumeRequest(false)
     setRequestNotice(null)
+    setTimePreset(DEFAULT_TIME_MINUTES)
+    setCustomMinutes(String(DEFAULT_TIME_MINUTES))
+    setTimePerSideMinutes(DEFAULT_TIME_MINUTES)
+    setWhiteTime(DEFAULT_TIME_MINUTES * 60)
+    setBlackTime(DEFAULT_TIME_MINUTES * 60)
+    setClockPaused(false)
     if (msg) console.info(msg)
   }, [])
 
   const enterRoom = useCallback(
-    (code: string, color: PlayerColor | null, cfg: TeleportConfig, state: GameState, status: RoomStatus) => {
+    (
+      code: string,
+      color: PlayerColor | null,
+      cfg: TeleportConfig,
+      state: GameState,
+      status: RoomStatus,
+      clock?: Partial<ClockSyncEvent> & { timePerSideMinutes?: number },
+    ) => {
       setRoomInUrl(code)
       setPhase('room')
       setRoomCode(code)
@@ -122,9 +195,14 @@ export function useMultiplayer(): MultiplayerState & {
       setPendingMyUndoRequest(false)
       setPendingOpponentRestartRequest(null)
       setPendingMyRestartRequest(false)
+      setPendingOpponentPauseRequest(null)
+      setPendingMyPauseRequest(false)
+      setPendingOpponentResumeRequest(null)
+      setPendingMyResumeRequest(false)
       setRequestNotice(null)
+      if (clock) applyClock(clock)
     },
-    [],
+    [applyClock],
   )
 
   useEffect(() => {
@@ -136,6 +214,10 @@ export function useMultiplayer(): MultiplayerState & {
       gameState: GameState
       config: TeleportConfig
       status: RoomStatus
+      whiteTime?: number
+      blackTime?: number
+      paused?: boolean
+      timePerSideMinutes?: number
     }) => {
       setRoomStatus('playing')
       setPlayerColor(data.color)
@@ -146,6 +228,11 @@ export function useMultiplayer(): MultiplayerState & {
       setPendingMyRestartRequest(false)
       setPendingOpponentUndoRequest(null)
       setPendingOpponentRestartRequest(null)
+      setPendingOpponentPauseRequest(null)
+      setPendingMyPauseRequest(false)
+      setPendingOpponentResumeRequest(null)
+      setPendingMyResumeRequest(false)
+      applyClock(data)
     }
 
     const onOpponentLeft = () => {
@@ -154,6 +241,11 @@ export function useMultiplayer(): MultiplayerState & {
       setPendingMyUndoRequest(false)
       setPendingOpponentRestartRequest(null)
       setPendingMyRestartRequest(false)
+      setPendingOpponentPauseRequest(null)
+      setPendingMyPauseRequest(false)
+      setPendingOpponentResumeRequest(null)
+      setPendingMyResumeRequest(false)
+      setClockPaused(false)
       setGameResult(null)
     }
 
@@ -164,10 +256,76 @@ export function useMultiplayer(): MultiplayerState & {
     const onGameEnded = (data: GameEndEvent) => {
       setRoomStatus('finished')
       setGameResult({ reason: 'resign', winner: data.winner })
+      setClockPaused(true)
+      clearPendingRequests()
+    }
+
+    const onGameOver = (data: GameOverEvent) => {
+      setRoomStatus('finished')
+      setGameResult({ reason: 'timeout', winner: data.winner })
+      setWhiteTime(data.whiteTime)
+      setBlackTime(data.blackTime)
+      setClockPaused(true)
+      clearPendingRequests()
+    }
+
+    const clearPendingRequests = () => {
       setPendingOpponentUndoRequest(null)
       setPendingMyUndoRequest(false)
       setPendingOpponentRestartRequest(null)
       setPendingMyRestartRequest(false)
+      setPendingOpponentPauseRequest(null)
+      setPendingMyPauseRequest(false)
+      setPendingOpponentResumeRequest(null)
+      setPendingMyResumeRequest(false)
+    }
+
+    const onClockSync = (data: ClockSyncEvent) => {
+      applyClock(data)
+    }
+
+    const onPauseRequest = (data: PauseRequestEvent) => {
+      setPendingOpponentPauseRequest(data)
+    }
+
+    const onPauseAccepted = (data: PauseAcceptedEvent) => {
+      setPendingMyPauseRequest(false)
+      setPendingOpponentPauseRequest(null)
+      applyClock(data)
+      setRequestNotice(
+        playerColorRef.current === data.from
+          ? '对方同意了暂停请求'
+          : '对局已暂停',
+      )
+    }
+
+    const onPauseDeclined = (data: PauseDeclinedEvent) => {
+      setPendingMyPauseRequest(false)
+      if (playerColorRef.current === data.from) {
+        setRequestNotice('对方拒绝了暂停请求')
+      }
+    }
+
+    const onResumeRequest = (data: ResumeRequestEvent) => {
+      setPendingOpponentResumeRequest(data)
+    }
+
+    const onResumeAccepted = (data: ResumeAcceptedEvent) => {
+      setPendingMyResumeRequest(false)
+      setPendingOpponentResumeRequest(null)
+      applyClock(data)
+      setRequestNotice(
+        playerColorRef.current === data.from
+          ? '对方同意了恢复请求'
+          : '对局已恢复',
+      )
+    }
+
+    const onResumeDeclined = (data: ResumeDeclinedEvent) => {
+      setPendingMyResumeRequest(false)
+      if (playerColorRef.current === data.from) {
+        setRequestNotice('对方拒绝了恢复请求')
+      }
     }
 
     const onUndoRequest = (data: UndoRequestEvent) => {
@@ -208,6 +366,7 @@ export function useMultiplayer(): MultiplayerState & {
         setLastMoveBy(null)
         setRoomStatus('playing')
         setGameResult(null)
+        applyClock(data)
         setRequestNotice('棋局已重新开始')
       } else if (!data.accept) {
         setRequestNotice('对手拒绝了重开请求')
@@ -218,9 +377,17 @@ export function useMultiplayer(): MultiplayerState & {
     socket.on('opponentLeft', onOpponentLeft)
     socket.on('roomClosed', onRoomClosed)
     socket.on('gameEnded', onGameEnded)
+    socket.on('gameOver', onGameOver)
+    socket.on('clockSync', onClockSync)
     socket.on('undoRequest', onUndoRequest)
     socket.on('undoAccepted', onUndoAccepted)
     socket.on('undoDeclined', onUndoDeclined)
+    socket.on('pauseRequest', onPauseRequest)
+    socket.on('pauseAccepted', onPauseAccepted)
+    socket.on('pauseDeclined', onPauseDeclined)
+    socket.on('resumeRequest', onResumeRequest)
+    socket.on('resumeAccepted', onResumeAccepted)
+    socket.on('resumeDeclined', onResumeDeclined)
     socket.on('opponentRequest', onOpponentRestartRequest)
     socket.on('requestResponded', onRequestResponded)
 
@@ -229,27 +396,45 @@ export function useMultiplayer(): MultiplayerState & {
       socket.off('opponentLeft', onOpponentLeft)
       socket.off('roomClosed', onRoomClosed)
       socket.off('gameEnded', onGameEnded)
+      socket.off('gameOver', onGameOver)
+      socket.off('clockSync', onClockSync)
       socket.off('undoRequest', onUndoRequest)
       socket.off('undoAccepted', onUndoAccepted)
       socket.off('undoDeclined', onUndoDeclined)
+      socket.off('pauseRequest', onPauseRequest)
+      socket.off('pauseAccepted', onPauseAccepted)
+      socket.off('pauseDeclined', onPauseDeclined)
+      socket.off('resumeRequest', onResumeRequest)
+      socket.off('resumeAccepted', onResumeAccepted)
+      socket.off('resumeDeclined', onResumeDeclined)
       socket.off('opponentRequest', onOpponentRestartRequest)
       socket.off('requestResponded', onRequestResponded)
     }
-  }, [resetToLobby])
+  }, [resetToLobby, applyClock])
 
   const createRoom = useCallback(async () => {
     setLoading(true)
     try {
       await waitForSocketConnected()
-      const res = await emitAck<CreateRoomAck>('createRoom', { config })
+      const res = await emitAck<CreateRoomAck>('createRoom', {
+        config,
+        timePerSideMinutes: getSelectedTimeMinutes(),
+      })
       if (!res.ok || !res.roomCode || !res.gameState || !res.config) {
         throw new Error(res.error || '创建房间失败')
       }
-      enterRoom(res.roomCode, res.color ?? 'white', res.config, res.gameState, res.status ?? 'waiting')
+      enterRoom(
+        res.roomCode,
+        res.color ?? 'white',
+        res.config,
+        res.gameState,
+        res.status ?? 'waiting',
+        res,
+      )
     } finally {
       setLoading(false)
     }
-  }, [config, enterRoom])
+  }, [config, enterRoom, getSelectedTimeMinutes])
 
   const joinRoomByCode = useCallback(
     async (code: string) => {
@@ -264,7 +449,7 @@ export function useMultiplayer(): MultiplayerState & {
         if (!res.ok || !res.roomCode || !res.color || !res.gameState || !res.config) {
           throw new Error(res.error || '加入房间失败')
         }
-        enterRoom(res.roomCode, res.color, res.config, res.gameState, res.status ?? 'playing')
+        enterRoom(res.roomCode, res.color, res.config, res.gameState, res.status ?? 'playing', res)
       } finally {
         setLoading(false)
       }
@@ -345,7 +530,54 @@ export function useMultiplayer(): MultiplayerState & {
     )
     if (!res.ok) throw new Error(res.error || '回应失败')
     setPendingOpponentRestartRequest(null)
-  }, [pendingOpponentRestartRequest])
+    if (accept && res.gameState) {
+      applyClock(res)
+    }
+  }, [pendingOpponentRestartRequest, applyClock])
+
+  const requestPause = useCallback(async () => {
+    const res = await emitAck<{ ok: boolean; error?: string }>('pauseRequest')
+    if (!res.ok) throw new Error(res.error || '请求暂停失败')
+    setPendingMyPauseRequest(true)
+    setRequestNotice(null)
+  }, [])
+
+  const acceptPause = useCallback(async () => {
+    if (!pendingOpponentPauseRequest) return
+    const res = await emitAck<PauseAcceptedEvent & { ok: boolean; error?: string }>('pauseAccept')
+    if (!res.ok) throw new Error(res.error || '同意暂停失败')
+    setPendingOpponentPauseRequest(null)
+    applyClock(res)
+  }, [pendingOpponentPauseRequest, applyClock])
+
+  const declinePause = useCallback(async () => {
+    if (!pendingOpponentPauseRequest) return
+    const res = await emitAck<PauseDeclinedEvent & { ok: boolean; error?: string }>('pauseDecline')
+    if (!res.ok) throw new Error(res.error || '拒绝暂停失败')
+    setPendingOpponentPauseRequest(null)
+  }, [pendingOpponentPauseRequest])
+
+  const requestResume = useCallback(async () => {
+    const res = await emitAck<{ ok: boolean; error?: string }>('resumeRequest')
+    if (!res.ok) throw new Error(res.error || '请求恢复失败')
+    setPendingMyResumeRequest(true)
+    setRequestNotice(null)
+  }, [])
+
+  const acceptResume = useCallback(async () => {
+    if (!pendingOpponentResumeRequest) return
+    const res = await emitAck<ResumeAcceptedEvent & { ok: boolean; error?: string }>('resumeAccept')
+    if (!res.ok) throw new Error(res.error || '同意恢复失败')
+    setPendingOpponentResumeRequest(null)
+    applyClock(res)
+  }, [pendingOpponentResumeRequest, applyClock])
+
+  const declineResume = useCallback(async () => {
+    if (!pendingOpponentResumeRequest) return
+    const res = await emitAck<ResumeDeclinedEvent & { ok: boolean; error?: string }>('resumeDecline')
+    if (!res.ok) throw new Error(res.error || '拒绝恢复失败')
+    setPendingOpponentResumeRequest(null)
+  }, [pendingOpponentResumeRequest])
 
   const clearRequestNotice = useCallback(() => setRequestNotice(null), [])
 
@@ -382,8 +614,18 @@ export function useMultiplayer(): MultiplayerState & {
     roomStatus === 'playing' &&
     !!playerColor &&
     lastMoveBy === playerColor &&
+    !clockPaused &&
     !pendingMyUndoRequest &&
-    !pendingMyRestartRequest
+    !pendingMyRestartRequest &&
+    !pendingMyPauseRequest &&
+    !pendingMyResumeRequest
+
+  const activeClockColor: PlayerColor | null =
+    roomStatus === 'playing' && !clockPaused
+      ? gameState.white_turn
+        ? 'white'
+        : 'black'
+      : null
 
   const patchConfig = (partial: Partial<TeleportConfig>) => {
     setConfig((prev) => ({ ...prev, ...partial }))
@@ -410,6 +652,19 @@ export function useMultiplayer(): MultiplayerState & {
     pendingOpponentRestartRequest,
     pendingMyRestartRequest,
     requestNotice,
+    timePreset,
+    customMinutes,
+    setTimePreset,
+    setCustomMinutes,
+    timePerSideMinutes,
+    whiteTime,
+    blackTime,
+    clockPaused,
+    activeClockColor,
+    pendingOpponentPauseRequest,
+    pendingMyPauseRequest,
+    pendingOpponentResumeRequest,
+    pendingMyResumeRequest,
     setJoinInput,
     setConfig,
     createRoom,
@@ -422,6 +677,12 @@ export function useMultiplayer(): MultiplayerState & {
     declineUndo,
     requestRestart,
     respondToRestartRequest,
+    requestPause,
+    acceptPause,
+    declinePause,
+    requestResume,
+    acceptResume,
+    declineResume,
     clearRequestNotice,
     recordLastMove,
     isOnline,

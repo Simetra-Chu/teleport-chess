@@ -34,7 +34,17 @@ import GameControlBar from './GameControlBar'
 import OpponentRequestDialog from './OpponentRequestDialog'
 import UndoRequestDialog from './UndoRequestDialog'
 import RoomInviteShare from './RoomInviteShare'
-import type { GameResult, OpponentRequestEvent, PlayerColor, RoomStatus, UndoRequestEvent } from '../multiplayer/types'
+import ChessClockDisplay from './ChessClockDisplay'
+import PauseResumeRequestDialog from './PauseResumeRequestDialog'
+import type {
+  GameResult,
+  OpponentRequestEvent,
+  PauseRequestEvent,
+  PlayerColor,
+  ResumeRequestEvent,
+  RoomStatus,
+  UndoRequestEvent,
+} from '../multiplayer/types'
 
 type PendingMove = {
   fr: number
@@ -64,6 +74,15 @@ interface GameViewProps {
   pendingMyUndoRequest?: boolean
   pendingOpponentRestartRequest?: OpponentRequestEvent | null
   pendingMyRestartRequest?: boolean
+  whiteTime?: number
+  blackTime?: number
+  clockPaused?: boolean
+  activeClockColor?: PlayerColor | null
+  timePerSideMinutes?: number
+  pendingOpponentPauseRequest?: PauseRequestEvent | null
+  pendingMyPauseRequest?: boolean
+  pendingOpponentResumeRequest?: ResumeRequestEvent | null
+  pendingMyResumeRequest?: boolean
   requestNotice?: string | null
   onResign?: () => Promise<void>
   onRequestUndo?: () => Promise<void>
@@ -71,6 +90,12 @@ interface GameViewProps {
   onDeclineUndo?: () => Promise<void>
   onRequestRestart?: () => Promise<void>
   onRespondToRestartRequest?: (accept: boolean) => Promise<void>
+  onRequestPause?: () => Promise<void>
+  onAcceptPause?: () => Promise<void>
+  onDeclinePause?: () => Promise<void>
+  onRequestResume?: () => Promise<void>
+  onAcceptResume?: () => Promise<void>
+  onDeclineResume?: () => Promise<void>
   onClearRequestNotice?: () => void
   onRecordLastMove?: (by: PlayerColor) => void
 }
@@ -93,6 +118,15 @@ export default function GameView({
   pendingMyUndoRequest = false,
   pendingOpponentRestartRequest = null,
   pendingMyRestartRequest = false,
+  whiteTime = 0,
+  blackTime = 0,
+  clockPaused = false,
+  activeClockColor = null,
+  timePerSideMinutes = 10,
+  pendingOpponentPauseRequest = null,
+  pendingMyPauseRequest = false,
+  pendingOpponentResumeRequest = null,
+  pendingMyResumeRequest = false,
   requestNotice = null,
   onResign,
   onRequestUndo,
@@ -100,6 +134,12 @@ export default function GameView({
   onDeclineUndo,
   onRequestRestart,
   onRespondToRestartRequest,
+  onRequestPause,
+  onAcceptPause,
+  onDeclinePause,
+  onRequestResume,
+  onAcceptResume,
+  onDeclineResume,
   onClearRequestNotice,
   onRecordLastMove,
 }: GameViewProps) {
@@ -122,11 +162,12 @@ export default function GameView({
   }, [])
 
   const myTurn = isMyTurn(gameState, playerColor)
-  const canPlay = !isOnline || roomStatus === 'playing'
+  const canPlay = !isOnline || (roomStatus === 'playing' && !clockPaused)
   const resigned = gameResult?.reason === 'resign'
+  const timedOut = gameResult?.reason === 'timeout'
   const fen = useMemo(() => boardToFen(gameState), [gameState])
   const outcome = useMemo(() => getGameOutcome(gameState, config), [gameState, config])
-  const gameOver = outcome.status !== 'ongoing' || resigned
+  const gameOver = outcome.status !== 'ongoing' || resigned || timedOut
 
   useEffect(() => {
     if (!isOnline) return
@@ -162,6 +203,19 @@ export default function GameView({
       setMessage(`${winner}获胜（对手认输）`)
     }
   }, [resigned, gameResult])
+
+  useEffect(() => {
+    if (timedOut && gameResult) {
+      const winner = gameResult.winner === 'white' ? '白方' : '黑方'
+      setMessage(`${winner}获胜（对手超时）`)
+    }
+  }, [timedOut, gameResult])
+
+  useEffect(() => {
+    if (clockPaused && roomStatus === 'playing') {
+      setMessage('对局已暂停')
+    }
+  }, [clockPaused, roomStatus])
 
   const applyLocalOutcome = useCallback(
     (next: GameState, moveMsg: string) => {
@@ -244,7 +298,7 @@ export default function GameView({
   const guardInteraction = useCallback(
     (square?: string): boolean => {
       if (!canPlay) {
-        setMessage('等待好友加入…')
+        setMessage(clockPaused ? '对局已暂停，无法走棋' : '等待好友加入…')
         return false
       }
       if (gameOver) return false
@@ -470,7 +524,7 @@ export default function GameView({
               </div>
             )}
 
-            {outcome.status === 'checkmate' && !resigned && (
+            {outcome.status === 'checkmate' && !resigned && !timedOut && (
               <div className="chess-board-overlay">
                 <GameOverOverlay
                   title="将死 Checkmate"
@@ -484,7 +538,7 @@ export default function GameView({
               </div>
             )}
 
-            {outcome.status === 'stalemate' && !resigned && (
+            {outcome.status === 'stalemate' && !resigned && !timedOut && (
               <div className="chess-board-overlay">
                 <GameOverOverlay
                   title="逼和 Stalemate"
@@ -497,12 +551,35 @@ export default function GameView({
                 />
               </div>
             )}
+            {clockPaused && roomStatus === 'playing' && !gameOver && (
+              <div className="chess-board-overlay">
+                <div className="absolute inset-0 z-10 flex items-center justify-center rounded-[10px] bg-black/45 backdrop-blur-[1px]">
+                  <div className="mx-4 rounded-2xl border border-orange-500/35 bg-[#161622]/95 px-6 py-5 text-center shadow-2xl">
+                    <p className="text-3xl">⏸</p>
+                    <h3 className="mt-2 text-lg font-bold text-orange-300">对局已暂停</h3>
+                    <p className="mt-1 text-sm text-white/60">双方均无法走棋，点击「请求恢复」继续</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {resigned && gameResult && (
               <div className="chess-board-overlay">
                 <GameOverOverlay
                   title="认输 Resign"
                   subtitle={`${gameResult.winner === 'white' ? '白方' : '黑方'}获胜`}
                   tone="resign"
+                  actionLabel="返回大厅"
+                  onRestart={onLeaveRoom}
+                />
+              </div>
+            )}
+            {timedOut && gameResult && (
+              <div className="chess-board-overlay">
+                <GameOverOverlay
+                  title="超时 Time Out"
+                  subtitle={`${gameResult.winner === 'white' ? '白方' : '黑方'}获胜（对手用时耗尽）`}
+                  tone="timeout"
                   actionLabel="返回大厅"
                   onRestart={onLeaveRoom}
                 />
@@ -548,6 +625,22 @@ export default function GameView({
             </div>
           </div>
 
+          {isOnline && roomStatus === 'playing' && (
+            <ChessClockDisplay
+              whiteTime={whiteTime}
+              blackTime={blackTime}
+              activeColor={activeClockColor}
+              paused={clockPaused}
+              playerColor={playerColor}
+            />
+          )}
+
+          {isOnline && roomStatus === 'playing' && (
+            <p className="text-center text-[11px] text-white/35">
+              包干制 · 每方 {timePerSideMinutes} 分钟
+            </p>
+          )}
+
           {!myTurn && canPlay && !gameOver && (
             <p className="rounded-lg border border-orange-500/30 bg-orange-950/30 px-3 py-2 text-center text-xs text-orange-300 sm:text-sm">
               等待对手走棋…
@@ -581,6 +674,9 @@ export default function GameView({
                 canRequestUndo={canRequestUndo}
                 pendingMyUndoRequest={pendingMyUndoRequest}
                 pendingMyRestartRequest={pendingMyRestartRequest}
+                clockPaused={clockPaused}
+                pendingMyPauseRequest={pendingMyPauseRequest}
+                pendingMyResumeRequest={pendingMyResumeRequest}
                 onResign={() => {
                   if (!window.confirm('确定要认输吗？')) return
                   void onResign().catch((e) =>
@@ -594,6 +690,16 @@ export default function GameView({
                   }
                   void onRequestUndo().catch((e) =>
                     setMessage(e instanceof Error ? e.message : '请求悔棋失败'),
+                  )
+                }}
+                onRequestPause={() => {
+                  void onRequestPause?.().catch((e) =>
+                    setMessage(e instanceof Error ? e.message : '请求暂停失败'),
+                  )
+                }}
+                onRequestResume={() => {
+                  void onRequestResume?.().catch((e) =>
+                    setMessage(e instanceof Error ? e.message : '请求恢复失败'),
                   )
                 }}
                 onRequestRestart={() => {
@@ -666,6 +772,38 @@ export default function GameView({
           }}
         />
       )}
+
+      {pendingOpponentPauseRequest && onAcceptPause && onDeclinePause && (
+        <PauseResumeRequestDialog
+          kind="pause"
+          onAccept={() => {
+            void onAcceptPause().catch((e) =>
+              setMessage(e instanceof Error ? e.message : '回应失败'),
+            )
+          }}
+          onReject={() => {
+            void onDeclinePause().catch((e) =>
+              setMessage(e instanceof Error ? e.message : '回应失败'),
+            )
+          }}
+        />
+      )}
+
+      {pendingOpponentResumeRequest && onAcceptResume && onDeclineResume && (
+        <PauseResumeRequestDialog
+          kind="resume"
+          onAccept={() => {
+            void onAcceptResume().catch((e) =>
+              setMessage(e instanceof Error ? e.message : '回应失败'),
+            )
+          }}
+          onReject={() => {
+            void onDeclineResume().catch((e) =>
+              setMessage(e instanceof Error ? e.message : '回应失败'),
+            )
+          }}
+        />
+      )}
     </main>
   )
 }
@@ -696,25 +834,32 @@ function GameOverOverlay({
 }: {
   title: string
   subtitle: string
-  tone: 'checkmate' | 'stalemate' | 'resign'
+  tone: 'checkmate' | 'stalemate' | 'resign' | 'timeout'
   actionLabel?: string
   onRestart: () => void
 }) {
   const isMate = tone === 'checkmate'
   const isResign = tone === 'resign'
+  const isTimeout = tone === 'timeout'
   return (
     <div className="absolute inset-0 z-10 flex items-center justify-center rounded-[10px] bg-black/55 backdrop-blur-[2px]">
       <div
         className={`mx-4 w-full max-w-sm rounded-2xl border px-6 py-6 text-center shadow-2xl ${
-          isResign
-            ? 'border-amber-500/40 bg-gradient-to-b from-amber-950/90 to-[#161622]'
-            : isMate
-              ? 'border-red-500/40 bg-gradient-to-b from-red-950/90 to-[#161622]'
-              : 'border-sky-500/40 bg-gradient-to-b from-sky-950/90 to-[#161622]'
+          isTimeout
+            ? 'border-red-500/40 bg-gradient-to-b from-red-950/90 to-[#161622]'
+            : isResign
+              ? 'border-amber-500/40 bg-gradient-to-b from-amber-950/90 to-[#161622]'
+              : isMate
+                ? 'border-red-500/40 bg-gradient-to-b from-red-950/90 to-[#161622]'
+                : 'border-sky-500/40 bg-gradient-to-b from-sky-950/90 to-[#161622]'
         }`}
       >
-        <p className={`text-4xl ${isResign ? 'text-amber-400' : isMate ? 'text-red-400' : 'text-sky-400'}`}>
-          {isResign ? '🏳' : isMate ? '♚' : '½'}
+        <p
+          className={`text-4xl ${
+            isTimeout ? 'text-red-400' : isResign ? 'text-amber-400' : isMate ? 'text-red-400' : 'text-sky-400'
+          }`}
+        >
+          {isTimeout ? '⏱' : isResign ? '🏳' : isMate ? '♚' : '½'}
         </p>
         <h3 className="mt-2 text-xl font-bold">{title}</h3>
         <p className="mt-1 text-sm text-white/65">{subtitle}</p>
@@ -722,7 +867,11 @@ function GameOverOverlay({
           type="button"
           onClick={onRestart}
           className={`mt-5 w-full rounded-xl py-2.5 text-sm font-semibold text-white transition ${
-            isResign ? 'bg-amber-600 hover:bg-amber-500' : isMate ? 'bg-red-600 hover:bg-red-500' : 'bg-sky-600 hover:bg-sky-500'
+            isTimeout || isMate
+              ? 'bg-red-600 hover:bg-red-500'
+              : isResign
+                ? 'bg-amber-600 hover:bg-amber-500'
+                : 'bg-sky-600 hover:bg-sky-500'
           }`}
         >
           {actionLabel ?? '重置棋盘'}

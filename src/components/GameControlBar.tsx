@@ -3,9 +3,14 @@ interface GameControlBarProps {
   canRequestUndo: boolean
   pendingMyUndoRequest: boolean
   pendingMyRestartRequest: boolean
+  clockPaused: boolean
+  pendingMyPauseRequest: boolean
+  pendingMyResumeRequest: boolean
   onResign: () => void
   onRequestUndo: () => void
   onRequestRestart: () => void
+  onRequestPause: () => void
+  onRequestResume: () => void
 }
 
 export default function GameControlBar({
@@ -13,11 +18,28 @@ export default function GameControlBar({
   canRequestUndo,
   pendingMyUndoRequest,
   pendingMyRestartRequest,
+  clockPaused,
+  pendingMyPauseRequest,
+  pendingMyResumeRequest,
   onResign,
   onRequestUndo,
   onRequestRestart,
+  onRequestPause,
+  onRequestResume,
 }: GameControlBarProps) {
-  const undoDisabled = disabled || !canRequestUndo || pendingMyUndoRequest || pendingMyRestartRequest
+  const undoDisabled =
+    disabled ||
+    !canRequestUndo ||
+    pendingMyUndoRequest ||
+    pendingMyRestartRequest ||
+    pendingMyPauseRequest ||
+    pendingMyResumeRequest
+
+  const busy =
+    pendingMyUndoRequest ||
+    pendingMyRestartRequest ||
+    pendingMyPauseRequest ||
+    pendingMyResumeRequest
 
   return (
     <div className="game-control-bar">
@@ -38,9 +60,28 @@ export default function GameControlBar({
       >
         {pendingMyUndoRequest ? '悔棋请求中…' : '悔棋'}
       </button>
+      {!clockPaused ? (
+        <button
+          type="button"
+          disabled={disabled || busy}
+          onClick={onRequestPause}
+          className="game-control-btn game-control-btn--pause"
+        >
+          {pendingMyPauseRequest ? '暂停请求中…' : '请求暂停'}
+        </button>
+      ) : (
+        <button
+          type="button"
+          disabled={disabled || busy}
+          onClick={onRequestResume}
+          className="game-control-btn game-control-btn--pause"
+        >
+          {pendingMyResumeRequest ? '恢复请求中…' : '请求恢复'}
+        </button>
+      )}
       <button
         type="button"
-        disabled={disabled || pendingMyUndoRequest || pendingMyRestartRequest}
+        disabled={disabled || busy}
         onClick={onRequestRestart}
         className="game-control-btn game-control-btn--restart"
       >

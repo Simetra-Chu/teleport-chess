@@ -1,12 +1,18 @@
 import type { TeleportConfig } from '../chessEngine'
 import RuleConfigPanel from './RuleConfigPanel'
 import TutorialButton from './TutorialButton'
+import TimeLimitSelector from './TimeLimitSelector'
+import type { TimePreset } from '../utils/clockFormat'
 
 interface LobbyPanelProps {
   joinInput: string
   loading: boolean
   config: TeleportConfig
   onConfigChange: (partial: Partial<TeleportConfig>) => void
+  timePreset: TimePreset
+  customMinutes: string
+  onTimePresetChange: (v: TimePreset) => void
+  onCustomMinutesChange: (v: string) => void
   onJoinInputChange: (v: string) => void
   onCreateRoom: () => void
   onJoinRoom: () => void
@@ -19,6 +25,10 @@ export default function LobbyPanel({
   loading,
   config,
   onConfigChange,
+  timePreset,
+  customMinutes,
+  onTimePresetChange,
+  onCustomMinutesChange,
   onJoinInputChange,
   onCreateRoom,
   onJoinRoom,
@@ -101,7 +111,14 @@ export default function LobbyPanel({
         </div>
 
         {/* 手机：下方规则；桌面：右侧 */}
-        <div className="w-full max-w-lg lg:max-w-sm lg:sticky lg:top-24">
+        <div className="w-full max-w-lg lg:max-w-sm lg:sticky lg:top-24 space-y-4">
+          <TimeLimitSelector
+            preset={timePreset}
+            customMinutes={customMinutes}
+            disabled={loading}
+            onPresetChange={onTimePresetChange}
+            onCustomMinutesChange={onCustomMinutesChange}
+          />
           <RuleConfigPanel
             config={config}
             onChange={onConfigChange}

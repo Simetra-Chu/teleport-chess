@@ -90,6 +90,10 @@ export default function App() {
           loading={mp.loading}
           config={mp.config}
           onConfigChange={mp.patchConfig}
+          timePreset={mp.timePreset}
+          customMinutes={mp.customMinutes}
+          onTimePresetChange={mp.setTimePreset}
+          onCustomMinutesChange={mp.setCustomMinutes}
           onJoinInputChange={mp.setJoinInput}
           onCreateRoom={handleCreate}
           onJoinRoom={handleJoin}
@@ -122,8 +126,23 @@ export default function App() {
           onDeclineUndo={mp.declineUndo}
           onRequestRestart={mp.requestRestart}
           onRespondToRestartRequest={mp.respondToRestartRequest}
+          onRequestPause={mp.requestPause}
+          onAcceptPause={mp.acceptPause}
+          onDeclinePause={mp.declinePause}
+          onRequestResume={mp.requestResume}
+          onAcceptResume={mp.acceptResume}
+          onDeclineResume={mp.declineResume}
           onClearRequestNotice={mp.clearRequestNotice}
           onRecordLastMove={mp.recordLastMove}
+          whiteTime={mp.whiteTime}
+          blackTime={mp.blackTime}
+          clockPaused={mp.clockPaused}
+          activeClockColor={mp.activeClockColor}
+          timePerSideMinutes={mp.timePerSideMinutes}
+          pendingOpponentPauseRequest={mp.pendingOpponentPauseRequest}
+          pendingMyPauseRequest={mp.pendingMyPauseRequest}
+          pendingOpponentResumeRequest={mp.pendingOpponentResumeRequest}
+          pendingMyResumeRequest={mp.pendingMyResumeRequest}
         />
       )}
     </div>

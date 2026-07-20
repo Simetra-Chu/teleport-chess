@@ -125,6 +125,95 @@ function reply(ack, payload) {
   if (typeof ack === 'function') ack(payload)
 }
 
+const DEFAULT_TIME_MINUTES = 10
+
+/** @param {unknown} raw @returns {number} */
+function parseTimePerSideMinutes(raw) {
+  const n = Number(raw)
+  if (!Number.isFinite(n) || n < 1 || n > 60) return DEFAULT_TIME_MINUTES
+  return Math.floor(n)
+}
+
+/** @param {object} room @param {number} minutes */
+function initRoomClock(room, minutes) {
+  const seconds = minutes * 60
+  room.timePerSideMinutes = minutes
+  room.whiteTime = seconds
+  room.blackTime = seconds
+  room.paused = false
+  room.pendingPauseRequest = null
+  room.pendingResumeRequest = null
+}
+
+/** @param {object} room */
+function clockPayload(room) {
+  return {
+    timePerSideMinutes: room.timePerSideMinutes,
+    whiteTime: room.whiteTime,
+    blackTime: room.blackTime,
+    paused: room.paused,
+  }
+}
+
+/** @param {object} room @returns {'white' | 'black' | null} */
+function getActiveClockColor(room) {
+  if (room.status !== 'playing' || !room.guestId) return null
+  return room.gameState.white_turn ? 'white' : 'black'
+}
+
+/** @param {object} room */
+function broadcastClock(room) {
+  io.to(room.code).emit('clockSync', {
+    roomCode: room.code,
+    ...clockPayload(room),
+  })
+}
+
+/** @param {object} room @param {'white' | 'black'} loser */
+function endGameTimeout(room, loser) {
+  room.status = 'finished'
+  room.paused = true
+  room.pendingPauseRequest = null
+  room.pendingResumeRequest = null
+  room.pendingUndoRequest = null
+  room.pendingRequest = null
+
+  const winner = loser === 'white' ? 'black' : 'white'
+  io.to(room.code).emit('gameOver', {
+    roomCode: room.code,
+    reason: 'timeout',
+    winner,
+    loser,
+    whiteTime: room.whiteTime,
+    blackTime: room.blackTime,
+  })
+  console.log(`[gameOver] room ${room.code} timeout ${loser} loses`)
+}
+
+/** @param {object} room */
+function tickRoomClock(room) {
+  if (room.status !== 'playing' || !room.guestId || room.paused) return
+
+  const active = getActiveClockColor(room)
+  if (!active) return
+
+  if (active === 'white') {
+    room.whiteTime = Math.max(0, room.whiteTime - 1)
+    if (room.whiteTime <= 0) {
+      endGameTimeout(room, 'white')
+      return
+    }
+  } else {
+    room.blackTime = Math.max(0, room.blackTime - 1)
+    if (room.blackTime <= 0) {
+      endGameTimeout(room, 'black')
+      return
+    }
+  }
+
+  broadcastClock(room)
+}
+
 const app = express()
 app.use(cors({ origin: corsOrigin }))
 app.get('/health', (_req, res) => {
@@ -159,6 +248,7 @@ io.on('connection', (socket) => {
       }
 
       const config = { ...DEFAULT_CONFIG, ...(payload.config || {}) }
+      const timePerSideMinutes = parseTimePerSideMinutes(payload.timePerSideMinutes)
       const code = generateRoomCode(rooms)
       const gameState = createInitialGameState(config)
 
@@ -174,6 +264,7 @@ io.on('connection', (socket) => {
         pendingRequest: null,
         status: 'waiting',
       }
+      initRoomClock(room, timePerSideMinutes)
 
       rooms.set(code, room)
       socketRoom.set(socket.id, code)
@@ -188,6 +279,7 @@ io.on('connection', (socket) => {
         config,
         gameState,
         status: room.status,
+        ...clockPayload(room),
       })
     } catch (err) {
       reply(ack, { ok: false, error: err.message || '创建房间失败' })
@@ -229,6 +321,7 @@ io.on('connection', (socket) => {
         config: room.config,
         gameState: room.gameState,
         status: room.status,
+        ...clockPayload(room),
       }
       reply(ack, guestPayload)
 
@@ -238,6 +331,7 @@ io.on('connection', (socket) => {
         gameState: room.gameState,
         config: room.config,
         status: room.status,
+        ...clockPayload(room),
       })
     } catch (err) {
       reply(ack, { ok: false, error: err.message || '加入房间失败' })
@@ -251,6 +345,7 @@ io.on('connection', (socket) => {
       if (!color) throw new Error('你不在这个房间')
       if (room.status === 'finished') throw new Error('对局已结束')
       if (room.status !== 'playing') throw new Error('对局尚未开始')
+      if (room.paused) throw new Error('对局已暂停，无法走棋')
 
       const { gameState, move } = payload
       if (!gameState || !move) throw new Error('缺少 gameState 或 move')
@@ -292,6 +387,7 @@ io.on('connection', (socket) => {
       if (!color) throw new Error('你不在这个房间')
       if (room.status === 'finished') throw new Error('对局已结束')
       if (room.status !== 'playing') throw new Error('对局尚未开始')
+      if (room.paused) throw new Error('对局已暂停，无法走棋')
 
       const { gameState, move } = payload
       if (!gameState || !move) throw new Error('缺少 gameState 或 move')
@@ -480,14 +576,178 @@ io.on('connection', (socket) => {
         room.gameState = createInitialGameState(room.config)
         room.previousGameState = null
         room.lastMoveBy = null
+        const seconds = room.timePerSideMinutes * 60
+        room.whiteTime = seconds
+        room.blackTime = seconds
+        room.paused = false
+        room.pendingPauseRequest = null
+        room.pendingResumeRequest = null
         responded.gameState = room.gameState
+        broadcastClock(room)
       }
 
-      io.to(room.code).emit('requestResponded', responded)
+      io.to(room.code).emit('requestResponded', { ...responded, ...clockPayload(room) })
       reply(ack, { ok: true, ...responded })
       console.log(`[respondRequest] room ${room.code} ${pending.type} accept=${accept}`)
     } catch (err) {
       reply(ack, { ok: false, error: err.message || '回应请求失败' })
+    }
+  })
+
+  socket.on('pauseRequest', (_payload, ack) => {
+    try {
+      const room = getRoomForSocket(socket.id)
+      const color = getPlayerColor(room, socket.id)
+      if (!color) throw new Error('你不在这个房间')
+      if (room.status !== 'playing') throw new Error('对局未进行中')
+      if (room.paused) throw new Error('对局已暂停')
+      if (room.pendingPauseRequest) throw new Error('已有待处理的暂停请求')
+
+      room.pendingPauseRequest = { from: color }
+      socket.to(room.code).emit('pauseRequest', {
+        roomCode: room.code,
+        from: color,
+      })
+      reply(ack, { ok: true })
+      console.log(`[pauseRequest] room ${room.code} from ${color}`)
+    } catch (err) {
+      reply(ack, { ok: false, error: err.message || '请求暂停失败' })
+    }
+  })
+
+  socket.on('pauseAccept', (_payload, ack) => {
+    try {
+      const room = getRoomForSocket(socket.id)
+      const color = getPlayerColor(room, socket.id)
+      if (!color) throw new Error('你不在这个房间')
+      if (room.status !== 'playing') throw new Error('对局未进行中')
+
+      const pending = room.pendingPauseRequest
+      if (!pending) throw new Error('没有待处理的暂停请求')
+      if (pending.from === color) throw new Error('不能回应自己的暂停请求')
+
+      room.pendingPauseRequest = null
+      room.paused = true
+
+      const event = {
+        roomCode: room.code,
+        from: pending.from,
+        by: color,
+        ...clockPayload(room),
+      }
+
+      io.to(room.code).emit('pauseAccepted', event)
+      reply(ack, { ok: true, ...event })
+      console.log(`[pauseAccept] room ${room.code} by ${color}`)
+    } catch (err) {
+      reply(ack, { ok: false, error: err.message || '同意暂停失败' })
+    }
+  })
+
+  socket.on('pauseDecline', (_payload, ack) => {
+    try {
+      const room = getRoomForSocket(socket.id)
+      const color = getPlayerColor(room, socket.id)
+      if (!color) throw new Error('你不在这个房间')
+      if (room.status !== 'playing') throw new Error('对局未进行中')
+
+      const pending = room.pendingPauseRequest
+      if (!pending) throw new Error('没有待处理的暂停请求')
+      if (pending.from === color) throw new Error('不能回应自己的暂停请求')
+
+      room.pendingPauseRequest = null
+
+      const event = {
+        roomCode: room.code,
+        from: pending.from,
+        by: color,
+      }
+
+      const requesterId = pending.from === 'white' ? room.hostId : room.guestId
+      if (requesterId) io.to(requesterId).emit('pauseDeclined', event)
+      reply(ack, { ok: true, ...event })
+      console.log(`[pauseDecline] room ${room.code} by ${color}`)
+    } catch (err) {
+      reply(ack, { ok: false, error: err.message || '拒绝暂停失败' })
+    }
+  })
+
+  socket.on('resumeRequest', (_payload, ack) => {
+    try {
+      const room = getRoomForSocket(socket.id)
+      const color = getPlayerColor(room, socket.id)
+      if (!color) throw new Error('你不在这个房间')
+      if (room.status !== 'playing') throw new Error('对局未进行中')
+      if (!room.paused) throw new Error('对局未暂停')
+      if (room.pendingResumeRequest) throw new Error('已有待处理的恢复请求')
+
+      room.pendingResumeRequest = { from: color }
+      socket.to(room.code).emit('resumeRequest', {
+        roomCode: room.code,
+        from: color,
+      })
+      reply(ack, { ok: true })
+      console.log(`[resumeRequest] room ${room.code} from ${color}`)
+    } catch (err) {
+      reply(ack, { ok: false, error: err.message || '请求恢复失败' })
+    }
+  })
+
+  socket.on('resumeAccept', (_payload, ack) => {
+    try {
+      const room = getRoomForSocket(socket.id)
+      const color = getPlayerColor(room, socket.id)
+      if (!color) throw new Error('你不在这个房间')
+      if (room.status !== 'playing') throw new Error('对局未进行中')
+      if (!room.paused) throw new Error('对局未暂停')
+
+      const pending = room.pendingResumeRequest
+      if (!pending) throw new Error('没有待处理的恢复请求')
+      if (pending.from === color) throw new Error('不能回应自己的恢复请求')
+
+      room.pendingResumeRequest = null
+      room.paused = false
+
+      const event = {
+        roomCode: room.code,
+        from: pending.from,
+        by: color,
+        ...clockPayload(room),
+      }
+
+      io.to(room.code).emit('resumeAccepted', event)
+      reply(ack, { ok: true, ...event })
+      console.log(`[resumeAccept] room ${room.code} by ${color}`)
+    } catch (err) {
+      reply(ack, { ok: false, error: err.message || '同意恢复失败' })
+    }
+  })
+
+  socket.on('resumeDecline', (_payload, ack) => {
+    try {
+      const room = getRoomForSocket(socket.id)
+      const color = getPlayerColor(room, socket.id)
+      if (!color) throw new Error('你不在这个房间')
+      if (room.status !== 'playing') throw new Error('对局未进行中')
+
+      const pending = room.pendingResumeRequest
+      if (!pending) throw new Error('没有待处理的恢复请求')
+      if (pending.from === color) throw new Error('不能回应自己的恢复请求')
+
+      room.pendingResumeRequest = null
+
+      const event = {
+        roomCode: room.code,
+        from: pending.from,
+        by: color,
+      }
+
+      const requesterId = pending.from === 'white' ? room.hostId : room.guestId
+      if (requesterId) io.to(requesterId).emit('resumeDeclined', event)
+      reply(ack, { ok: true, ...event })
+      console.log(`[resumeDecline] room ${room.code} by ${color}`)
+    } catch (err) {
+      reply(ack, { ok: false, error: err.message || '拒绝恢复失败' })
     }
   })
 
@@ -534,6 +794,12 @@ function leaveRoom(socket) {
     console.log(`[opponentLeft] ${code}`)
   }
 }
+
+setInterval(() => {
+  for (const room of rooms.values()) {
+    tickRoomClock(room)
+  }
+}, 1000)
 
 httpServer.listen(PORT, () => {
   console.log(`Teleport Chess server listening on http://localhost:${PORT}`)
