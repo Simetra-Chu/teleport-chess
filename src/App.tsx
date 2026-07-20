@@ -169,6 +169,9 @@ export default function App() {
           pendingMyPauseRequest={mp.pendingMyPauseRequest}
           pendingOpponentResumeRequest={mp.pendingOpponentResumeRequest}
           pendingMyResumeRequest={mp.pendingMyResumeRequest}
+          chatMessages={mp.chatMessages}
+          canChat={mp.canChat}
+          onSendChatMessage={mp.sendChatMessage}
         />
       )}
     </div>

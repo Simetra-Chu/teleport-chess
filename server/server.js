@@ -447,6 +447,31 @@ io.on('connection', (socket) => {
     }
   })
 
+  socket.on('chatMessage', (payload = {}, ack) => {
+    try {
+      const room = getRoomForSocket(socket.id)
+      const color = getPlayerColor(room, socket.id)
+      if (!color) throw new Error('你不在这个房间')
+      if (!room.guestId) throw new Error('对手尚未加入，暂时无法聊天')
+
+      const text = String(payload.text || '').trim().slice(0, 200)
+      if (!text) throw new Error('消息不能为空')
+
+      const event = {
+        roomCode: room.code,
+        from: color,
+        text,
+        ts: Date.now(),
+      }
+
+      io.to(room.code).emit('chatMessage', event)
+      reply(ack, { ok: true })
+      console.log(`[chatMessage] room ${room.code} by ${color}`)
+    } catch (err) {
+      reply(ack, { ok: false, error: err.message || '发送消息失败' })
+    }
+  })
+
   socket.on('leaveRoom', (_payload, ack) => {
     leaveRoom(socket)
     reply(ack, { ok: true })

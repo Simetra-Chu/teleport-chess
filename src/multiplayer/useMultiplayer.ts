@@ -10,6 +10,8 @@ import { emitAck, getSocket, waitForSocketConnected } from './socket'
 import { DEFAULT_CONFIG } from './gameHelpers'
 import type {
   CreateRoomAck,
+  ChatMessage,
+  ChatMessageEvent,
   ClockSyncEvent,
   GameEndEvent,
   GameOverEvent,
@@ -51,6 +53,9 @@ export interface MultiplayerState {
   joinPreview: JoinRoomPreview | null
   joinPreviewError: string | null
   clearJoinPreviewError: () => void
+  chatMessages: ChatMessage[]
+  canChat: boolean
+  sendChatMessage: (text: string) => Promise<void>
   gameResult: GameResult | null
   lastMoveBy: PlayerColor | null
   canRequestUndo: boolean
@@ -117,6 +122,7 @@ export function useMultiplayer(): MultiplayerState & {
   const [autoJoinError, setAutoJoinError] = useState<string | null>(null)
   const [joinPreview, setJoinPreview] = useState<JoinRoomPreview | null>(null)
   const [joinPreviewError, setJoinPreviewError] = useState<string | null>(null)
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
   const autoJoinAttempted = useRef(false)
   const [gameResult, setGameResult] = useState<GameResult | null>(null)
   const [lastMoveBy, setLastMoveBy] = useState<PlayerColor | null>(null)
@@ -165,6 +171,7 @@ export function useMultiplayer(): MultiplayerState & {
     setJoinInput('')
     setJoinPreview(null)
     setJoinPreviewError(null)
+    setChatMessages([])
     setGameResult(null)
     setLastMoveBy(null)
     setPendingOpponentUndoRequest(null)
@@ -199,6 +206,7 @@ export function useMultiplayer(): MultiplayerState & {
       setRoomCode(code)
       setJoinPreview(null)
       setJoinPreviewError(null)
+      setChatMessages([])
       setPlayerColor(color)
       setConfig(cfg)
       setGameState(state)
@@ -387,6 +395,21 @@ export function useMultiplayer(): MultiplayerState & {
       }
     }
 
+    const onChatMessage = (data: ChatMessageEvent) => {
+      setChatMessages((prev) =>
+        [
+          ...prev,
+          {
+            id: `${data.ts}-${data.from}-${prev.length}`,
+            roomCode: data.roomCode,
+            from: data.from,
+            text: data.text,
+            ts: data.ts,
+          },
+        ].slice(-100),
+      )
+    }
+
     socket.on('opponentJoined', onOpponentJoined)
     socket.on('opponentLeft', onOpponentLeft)
     socket.on('roomClosed', onRoomClosed)
@@ -404,6 +427,7 @@ export function useMultiplayer(): MultiplayerState & {
     socket.on('resumeDeclined', onResumeDeclined)
     socket.on('opponentRequest', onOpponentRestartRequest)
     socket.on('requestResponded', onRequestResponded)
+    socket.on('chatMessage', onChatMessage)
 
     return () => {
       socket.off('opponentJoined', onOpponentJoined)
@@ -423,6 +447,7 @@ export function useMultiplayer(): MultiplayerState & {
       socket.off('resumeDeclined', onResumeDeclined)
       socket.off('opponentRequest', onOpponentRestartRequest)
       socket.off('requestResponded', onRequestResponded)
+      socket.off('chatMessage', onChatMessage)
     }
   }, [resetToLobby, applyClock])
 
@@ -638,6 +663,13 @@ export function useMultiplayer(): MultiplayerState & {
 
   const clearRequestNotice = useCallback(() => setRequestNotice(null), [])
 
+  const sendChatMessage = useCallback(async (text: string) => {
+    const trimmed = text.trim()
+    if (!trimmed) return
+    const res = await emitAck<{ ok: boolean; error?: string }>('chatMessage', { text: trimmed })
+    if (!res.ok) throw new Error(res.error || '发送消息失败')
+  }, [])
+
   const recordLastMove = useCallback((by: PlayerColor) => {
     setLastMoveBy(by)
   }, [])
@@ -661,6 +693,7 @@ export function useMultiplayer(): MultiplayerState & {
   }, [])
 
   const isOnline = phase === 'room'
+  const canChat = isOnline && roomStatus !== 'waiting'
   const isMyTurn =
     !isOnline ||
     !playerColor ||
@@ -704,6 +737,9 @@ export function useMultiplayer(): MultiplayerState & {
     joinPreview,
     joinPreviewError,
     clearJoinPreviewError,
+    chatMessages,
+    canChat,
+    sendChatMessage,
     gameResult,
     lastMoveBy,
     canRequestUndo,

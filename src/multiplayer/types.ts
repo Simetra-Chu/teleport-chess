@@ -88,6 +88,21 @@ export interface OpponentRequestEvent {
   from: PlayerColor
 }
 
+export interface ChatMessage {
+  id: string
+  roomCode: string
+  from: PlayerColor
+  text: string
+  ts: number
+}
+
+export interface ChatMessageEvent {
+  roomCode: string
+  from: PlayerColor
+  text: string
+  ts: number
+}
+
 export interface RequestRespondedEvent {
   roomCode: string
   type: 'restart'

@@ -34,7 +34,9 @@ import GameControlBar from './GameControlBar'
 import RoomInviteShare from './RoomInviteShare'
 import ChessClockDisplay from './ChessClockDisplay'
 import GameRequestBanner from './GameRequestBanner'
+import GameChatPanel from './GameChatPanel'
 import type {
+  ChatMessage,
   GameResult,
   OpponentRequestEvent,
   PauseRequestEvent,
@@ -82,6 +84,9 @@ interface GameViewProps {
   pendingOpponentResumeRequest?: ResumeRequestEvent | null
   pendingMyResumeRequest?: boolean
   requestNotice?: string | null
+  chatMessages?: ChatMessage[]
+  canChat?: boolean
+  onSendChatMessage?: (text: string) => Promise<void>
   onResign?: () => Promise<void>
   onRequestUndo?: () => Promise<void>
   onAcceptUndo?: () => Promise<void>
@@ -126,6 +131,9 @@ export default function GameView({
   pendingOpponentResumeRequest = null,
   pendingMyResumeRequest = false,
   requestNotice = null,
+  chatMessages = [],
+  canChat = false,
+  onSendChatMessage,
   onResign,
   onRequestUndo,
   onAcceptUndo,
@@ -674,6 +682,20 @@ export default function GameView({
 
           {isOnline && roomStatus === 'waiting' && playerColor === 'white' && roomCode && (
             <RoomInviteShare roomCode={roomCode} variant="inline" />
+          )}
+
+          {isOnline && onSendChatMessage && (
+            <GameChatPanel
+              messages={chatMessages}
+              playerColor={playerColor}
+              disabled={!canChat}
+              disabledHint={
+                roomStatus === 'waiting'
+                  ? '等待对手加入后可聊天'
+                  : '当前无法发送消息'
+              }
+              onSend={onSendChatMessage}
+            />
           )}
 
           <p className="rounded-lg border border-white/10 bg-black/30 px-3 py-2.5 text-center text-xs text-white/70 sm:text-sm">
