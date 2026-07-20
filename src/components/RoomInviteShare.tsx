@@ -9,9 +9,7 @@ interface RoomInviteShareProps {
 function BrowserOpenHint({ className = '' }: { className?: string }) {
   return (
     <p className={`room-invite-hint text-[11px] leading-relaxed text-amber-300/90 sm:text-xs ${className}`}>
-      请提醒好友用
-      <strong className="mx-0.5 font-semibold text-amber-200">手机浏览器</strong>
-      （Safari / Chrome）打开链接，不要在微信、QQ 等 App 内直接点开。
+      请提醒好友用浏览器打开链接，不要在微信、QQ 等 App 内直接点开。
     </p>
   )
 }
