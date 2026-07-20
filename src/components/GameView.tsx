@@ -31,11 +31,9 @@ import RuleConfigPanel from './RuleConfigPanel'
 import TeleportModeButton from './TeleportModeButton'
 import GameTutorialOverlay from './GameTutorialOverlay'
 import GameControlBar from './GameControlBar'
-import OpponentRequestDialog from './OpponentRequestDialog'
-import UndoRequestDialog from './UndoRequestDialog'
 import RoomInviteShare from './RoomInviteShare'
 import ChessClockDisplay from './ChessClockDisplay'
-import PauseStatusBanner from './PauseStatusBanner'
+import GameRequestBanner from './GameRequestBanner'
 import type {
   GameResult,
   OpponentRequestEvent,
@@ -160,6 +158,14 @@ export default function GameView({
       return next
     })
   }, [])
+
+  const respond = useCallback(
+    (fn?: () => Promise<void>) => () => {
+      if (!fn) return
+      void fn().catch((e) => setMessage(e instanceof Error ? e.message : '回应失败'))
+    },
+    [],
+  )
 
   const myTurn = isMyTurn(gameState, playerColor)
   const canPlay = !isOnline || (roomStatus === 'playing' && !clockPaused)
@@ -624,46 +630,31 @@ export default function GameView({
           )}
 
           {isOnline && roomStatus === 'playing' && (
-            <PauseStatusBanner
+            <GameRequestBanner
               clockPaused={clockPaused}
               pendingMyPauseRequest={pendingMyPauseRequest}
               pendingMyResumeRequest={pendingMyResumeRequest}
               pendingOpponentPauseRequest={!!pendingOpponentPauseRequest}
               pendingOpponentResumeRequest={!!pendingOpponentResumeRequest}
-              onAcceptPause={
-                onAcceptPause
-                  ? () => {
-                      void onAcceptPause().catch((e) =>
-                        setMessage(e instanceof Error ? e.message : '回应失败'),
-                      )
-                    }
+              pendingMyUndoRequest={pendingMyUndoRequest}
+              pendingMyRestartRequest={pendingMyRestartRequest}
+              pendingOpponentUndoRequest={!!pendingOpponentUndoRequest}
+              pendingOpponentRestartRequest={!!pendingOpponentRestartRequest}
+              restartFromColor={pendingOpponentRestartRequest?.from ?? null}
+              onAcceptPause={onAcceptPause ? respond(onAcceptPause) : undefined}
+              onDeclinePause={onDeclinePause ? respond(onDeclinePause) : undefined}
+              onAcceptResume={onAcceptResume ? respond(onAcceptResume) : undefined}
+              onDeclineResume={onDeclineResume ? respond(onDeclineResume) : undefined}
+              onAcceptUndo={onAcceptUndo ? respond(onAcceptUndo) : undefined}
+              onDeclineUndo={onDeclineUndo ? respond(onDeclineUndo) : undefined}
+              onAcceptRestart={
+                onRespondToRestartRequest
+                  ? respond(() => onRespondToRestartRequest(true))
                   : undefined
               }
-              onDeclinePause={
-                onDeclinePause
-                  ? () => {
-                      void onDeclinePause().catch((e) =>
-                        setMessage(e instanceof Error ? e.message : '回应失败'),
-                      )
-                    }
-                  : undefined
-              }
-              onAcceptResume={
-                onAcceptResume
-                  ? () => {
-                      void onAcceptResume().catch((e) =>
-                        setMessage(e instanceof Error ? e.message : '回应失败'),
-                      )
-                    }
-                  : undefined
-              }
-              onDeclineResume={
-                onDeclineResume
-                  ? () => {
-                      void onDeclineResume().catch((e) =>
-                        setMessage(e instanceof Error ? e.message : '回应失败'),
-                      )
-                    }
+              onDeclineRestart={
+                onRespondToRestartRequest
+                  ? respond(() => onRespondToRestartRequest(false))
                   : undefined
               }
             />
@@ -769,38 +760,6 @@ export default function GameView({
         teleportMode={teleportMode}
         onClose={() => onTutorialClose?.()}
       />
-
-      {pendingOpponentUndoRequest && onAcceptUndo && onDeclineUndo && (
-        <UndoRequestDialog
-          onAccept={() => {
-            void onAcceptUndo().catch((e) =>
-              setMessage(e instanceof Error ? e.message : '回应失败'),
-            )
-          }}
-          onReject={() => {
-            void onDeclineUndo().catch((e) =>
-              setMessage(e instanceof Error ? e.message : '回应失败'),
-            )
-          }}
-        />
-      )}
-
-      {pendingOpponentRestartRequest && onRespondToRestartRequest && (
-        <OpponentRequestDialog
-          fromColor={pendingOpponentRestartRequest.from}
-          onAccept={() => {
-            void onRespondToRestartRequest(true).catch((e) =>
-              setMessage(e instanceof Error ? e.message : '回应失败'),
-            )
-          }}
-          onReject={() => {
-            void onRespondToRestartRequest(false).catch((e) =>
-              setMessage(e instanceof Error ? e.message : '回应失败'),
-            )
-          }}
-        />
-      )}
-
     </main>
   )
 }
