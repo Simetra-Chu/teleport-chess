@@ -653,7 +653,7 @@ function WaitingOverlay({ roomCode }: { roomCode: string }) {
           <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-amber-400" />
           等待好友加入…
         </p>
-        <p className="mt-3 text-xs text-white/40">好友点击链接即可加入，作为黑方开始对局</p>
+        <p className="mt-3 text-xs text-white/40">好友在浏览器中打开链接即可加入，作为黑方开始对局</p>
       </div>
     </div>
   )

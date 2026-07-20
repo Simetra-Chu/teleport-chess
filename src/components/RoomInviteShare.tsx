@@ -6,6 +6,16 @@ interface RoomInviteShareProps {
   variant?: 'card' | 'inline'
 }
 
+function BrowserOpenHint({ className = '' }: { className?: string }) {
+  return (
+    <p className={`room-invite-hint text-[11px] leading-relaxed text-amber-300/90 sm:text-xs ${className}`}>
+      请提醒好友用
+      <strong className="mx-0.5 font-semibold text-amber-200">手机浏览器</strong>
+      （Safari / Chrome）打开链接，不要在微信、QQ 等 App 内直接点开。
+    </p>
+  )
+}
+
 export default function RoomInviteShare({ roomCode, variant = 'card' }: RoomInviteShareProps) {
   const inviteUrl = useMemo(() => buildRoomInviteUrl(roomCode), [roomCode])
   const [copied, setCopied] = useState(false)
@@ -28,6 +38,7 @@ export default function RoomInviteShare({ roomCode, variant = 'card' }: RoomInvi
       <div className="room-invite-inline">
         <p className="text-xs text-white/45">邀请链接</p>
         <p className="room-invite-url mt-1 break-all text-[11px] text-white/55">{inviteUrl}</p>
+        <BrowserOpenHint className="mt-2 rounded-lg border border-amber-500/25 bg-amber-950/25 px-2.5 py-2" />
         <button
           type="button"
           onClick={() => void handleCopy()}
@@ -46,6 +57,7 @@ export default function RoomInviteShare({ roomCode, variant = 'card' }: RoomInvi
       <p className="room-invite-url mt-2 break-all rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-[11px] leading-relaxed text-white/60 sm:text-xs">
         {inviteUrl}
       </p>
+      <BrowserOpenHint className="mt-2 rounded-lg border border-amber-500/25 bg-amber-950/30 px-3 py-2.5" />
       <button
         type="button"
         onClick={() => void handleCopy()}
