@@ -3,7 +3,7 @@
 :root {
   --page-x: clamp(0.75rem, 3vw, 1.5rem);
   --board-max: 560px;
-  --header-h: 3.75rem;
+  --header-h: 4.25rem;
   --mobile-dock-h: 3.25rem;
   --mobile-info-reserve: 5.5rem;
 }
@@ -234,21 +234,46 @@ body {
 
   .waiting-room-modal {
     position: fixed;
-    inset: 0;
+    top: calc(var(--header-h) + env(safe-area-inset-top, 0px));
+    right: 0;
+    bottom: calc(var(--mobile-dock-h) + env(safe-area-inset-bottom, 0px));
+    left: 0;
     z-index: 40;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding:
-      calc(var(--header-h) + env(safe-area-inset-top, 0px) + 0.75rem)
-      max(var(--page-x), env(safe-area-inset-left, 0px))
-      calc(var(--mobile-dock-h) + env(safe-area-inset-bottom, 0px) + 0.75rem)
-      max(var(--page-x), env(safe-area-inset-right, 0px));
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 1rem max(var(--page-x), env(safe-area-inset-left, 0px))
+      1rem max(var(--page-x), env(safe-area-inset-right, 0px));
     background: rgba(0, 0, 0, 0.62);
     backdrop-filter: blur(2px);
   }
 
   .waiting-room-modal-panel {
+    width: 100%;
+    max-width: 24rem;
+    margin: 0 auto;
+  }
+
+  .game-page--waiting-host {
+    display: flex;
+    flex-direction: column;
+    min-height: calc(
+      100dvh - var(--header-h) - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)
+    );
+    padding-top: 0.75rem;
+    padding-bottom: calc(var(--mobile-dock-h) + env(safe-area-inset-bottom, 0px) + 0.75rem);
+  }
+
+  .waiting-host-shell {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 0;
+    padding-block: 0.5rem;
+  }
+
+  .waiting-host-shell .waiting-room-card {
     width: 100%;
     max-width: 24rem;
     max-height: 100%;

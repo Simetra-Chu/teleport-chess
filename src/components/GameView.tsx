@@ -32,7 +32,7 @@ import TeleportModeButton from './TeleportModeButton'
 import GameTutorialOverlay from './GameTutorialOverlay'
 import GameControlBar from './GameControlBar'
 import RoomInviteShare from './RoomInviteShare'
-import WaitingRoomPanel from './WaitingRoomPanel'
+import WaitingRoomPanel, { WaitingRoomCard } from './WaitingRoomPanel'
 import ChessClockDisplay from './ChessClockDisplay'
 import GameRequestBanner from './GameRequestBanner'
 import GameChatPanel from './GameChatPanel'
@@ -519,6 +519,27 @@ export default function GameView({
       />
     ) : null
 
+  const isWaitingHost =
+    isOnline && roomStatus === 'waiting' && playerColor === 'white' && !!roomCode
+
+  if (isTouch && isWaitingHost) {
+    return (
+      <main className="game-page game-page--has-dock game-page--waiting-host">
+        <div className="waiting-host-shell">
+          <WaitingRoomCard roomCode={roomCode!} />
+        </div>
+
+        {chatPanel}
+
+        <div className="mobile-game-dock lg:hidden">
+          <button type="button" onClick={onLeaveRoom} className="mobile-game-dock-leave">
+            离开房间
+          </button>
+        </div>
+      </main>
+    )
+  }
+
   return (
     <main
       className={`game-page${isTouch ? ' game-page--has-dock' : ''}${isTouch && roomStatus === 'playing' ? ' game-page--playing-dock' : ''}`}
@@ -544,9 +565,7 @@ export default function GameView({
               </div>
             )}
 
-            {isOnline && roomStatus === 'waiting' && playerColor === 'white' && (
-              <WaitingRoomPanel roomCode={roomCode!} />
-            )}
+            {isWaitingHost && !isTouch && <WaitingRoomPanel roomCode={roomCode!} />}
 
             {outcome.status === 'checkmate' && !resigned && !timedOut && (
               <div className="chess-board-overlay">
