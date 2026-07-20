@@ -32,6 +32,7 @@ import TeleportModeButton from './TeleportModeButton'
 import GameTutorialOverlay from './GameTutorialOverlay'
 import GameControlBar from './GameControlBar'
 import OpponentRequestDialog from './OpponentRequestDialog'
+import RoomInviteShare from './RoomInviteShare'
 import type { GameResult, OpponentRequestEvent, OpponentRequestType, PlayerColor, RoomStatus } from '../multiplayer/types'
 
 type PendingMove = {
@@ -550,6 +551,10 @@ export default function GameView({
             </p>
           )}
 
+          {isOnline && roomStatus === 'waiting' && playerColor === 'white' && roomCode && (
+            <RoomInviteShare roomCode={roomCode} variant="inline" />
+          )}
+
           <p className="rounded-lg border border-white/10 bg-black/30 px-3 py-2.5 text-center text-xs text-white/70 sm:text-sm">
             {message}
           </p>
@@ -643,12 +648,12 @@ function WaitingOverlay({ roomCode }: { roomCode: string }) {
       <div className="mx-4 w-full max-w-sm rounded-2xl border border-purple-500/30 bg-[#161622]/95 px-6 py-5 text-center shadow-2xl">
         <p className="text-xs uppercase tracking-widest text-white/40">你的房间号是</p>
         <p className="mt-2 font-mono text-4xl font-bold tracking-[0.25em] text-purple-400">{roomCode}</p>
-        <p className="mt-2 text-sm text-white/60">快发给好友吧！</p>
+        <RoomInviteShare roomCode={roomCode} />
         <p className="mt-4 flex items-center justify-center gap-2 text-sm text-amber-400/90">
           <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-amber-400" />
           等待好友加入…
         </p>
-        <p className="mt-3 text-xs text-white/40">好友加入后作为黑方，对局开始</p>
+        <p className="mt-3 text-xs text-white/40">好友点击链接即可加入，作为黑方开始对局</p>
       </div>
     </div>
   )

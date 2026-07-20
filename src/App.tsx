@@ -1,14 +1,22 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import GameView from './components/GameView'
 import LobbyPanel from './components/LobbyPanel'
+import AutoJoinSplash from './components/AutoJoinSplash'
 import TutorialModal from './components/TutorialModal'
 import TutorialButton from './components/TutorialButton'
 import { useMultiplayer } from './multiplayer/useMultiplayer'
 
 export default function App() {
   const mp = useMultiplayer()
+  const { autoJoinError, clearAutoJoinError } = mp
   const [lobbyError, setLobbyError] = useState<string | null>(null)
   const [tutorialOpen, setTutorialOpen] = useState(false)
+
+  useEffect(() => {
+    if (!autoJoinError) return
+    setLobbyError(autoJoinError)
+    clearAutoJoinError()
+  }, [autoJoinError, clearAutoJoinError])
 
   const handleCreate = async () => {
     setLobbyError(null)
@@ -28,6 +36,8 @@ export default function App() {
     }
   }
 
+  const showLobby = mp.phase === 'lobby' && !mp.autoJoining
+
   return (
     <div className="app-shell min-h-[100dvh] overflow-x-hidden text-stone-100">
       <header className="sticky top-0 z-30 border-b border-white/10 bg-black/40 backdrop-blur-md">
@@ -35,15 +45,17 @@ export default function App() {
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-base font-bold tracking-tight sm:text-xl">瞬移国际象棋</h1>
             <p className="truncate text-[11px] text-white/45 sm:text-xs">
-              {mp.phase === 'lobby'
-                ? '联机对战 · 创建或加入房间'
-                : `房间 ${mp.roomCode} · ${
-                    mp.roomStatus === 'waiting'
-                      ? '等待对手'
-                      : mp.roomStatus === 'finished'
-                        ? '对局已结束'
-                        : '在线对战中'
-                  }`}
+              {mp.autoJoining
+                ? `正在加入房间 ${mp.autoJoinRoomCode ?? ''}…`
+                : mp.phase === 'lobby'
+                  ? '联机对战 · 创建或加入房间'
+                  : `房间 ${mp.roomCode} · ${
+                      mp.roomStatus === 'waiting'
+                        ? '等待对手'
+                        : mp.roomStatus === 'finished'
+                          ? '对局已结束'
+                          : '在线对战中'
+                    }`}
             </p>
           </div>
 
@@ -62,7 +74,7 @@ export default function App() {
       </header>
 
       <TutorialModal
-        open={tutorialOpen && mp.phase === 'lobby'}
+        open={tutorialOpen && showLobby}
         onClose={() => setTutorialOpen(false)}
       />
 
@@ -70,7 +82,9 @@ export default function App() {
         <TutorialButton onClick={() => setTutorialOpen(true)} variant="float" />
       )}
 
-      {mp.phase === 'lobby' ? (
+      {mp.autoJoining ? (
+        <AutoJoinSplash roomCode={mp.autoJoinRoomCode ?? '----'} />
+      ) : showLobby ? (
         <LobbyPanel
           joinInput={mp.joinInput}
           loading={mp.loading}

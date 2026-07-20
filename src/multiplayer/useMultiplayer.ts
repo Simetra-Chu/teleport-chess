@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { initGame, type GameState, type TeleportConfig } from '../chessEngine'
-import { emitAck, getSocket } from './socket'
+import { clearRoomFromUrl, getRoomFromUrl, setRoomInUrl } from '../utils/roomLink'
+import { emitAck, getSocket, waitForSocketConnected } from './socket'
 import { DEFAULT_CONFIG } from './gameHelpers'
 import type {
   CreateRoomAck,
@@ -26,6 +27,10 @@ export interface MultiplayerState {
   gameState: GameState
   joinInput: string
   loading: boolean
+  autoJoining: boolean
+  autoJoinRoomCode: string | null
+  autoJoinError: string | null
+  clearAutoJoinError: () => void
   gameResult: GameResult | null
   canUndo: boolean
   pendingOpponentRequest: OpponentRequestEvent | null
@@ -35,6 +40,7 @@ export interface MultiplayerState {
   setConfig: React.Dispatch<React.SetStateAction<TeleportConfig>>
   createRoom: () => Promise<void>
   joinRoom: () => Promise<void>
+  joinRoomByCode: (code: string) => Promise<void>
   leaveRoom: () => void
   resign: () => Promise<void>
   requestUndo: () => Promise<void>
@@ -59,6 +65,10 @@ export function useMultiplayer(): MultiplayerState & {
   const [gameState, setGameState] = useState<GameState>(() => initGame(DEFAULT_CONFIG))
   const [joinInput, setJoinInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [autoJoining, setAutoJoining] = useState(false)
+  const [autoJoinRoomCode, setAutoJoinRoomCode] = useState<string | null>(() => getRoomFromUrl())
+  const [autoJoinError, setAutoJoinError] = useState<string | null>(null)
+  const autoJoinAttempted = useRef(false)
   const [gameResult, setGameResult] = useState<GameResult | null>(null)
   const [canUndo, setCanUndo] = useState(false)
   const [pendingOpponentRequest, setPendingOpponentRequest] = useState<OpponentRequestEvent | null>(
@@ -68,6 +78,7 @@ export function useMultiplayer(): MultiplayerState & {
   const [requestNotice, setRequestNotice] = useState<string | null>(null)
 
   const resetToLobby = useCallback((msg?: string) => {
+    clearRoomFromUrl()
     setPhase('lobby')
     setRoomCode(null)
     setRoomStatus(null)
@@ -85,6 +96,7 @@ export function useMultiplayer(): MultiplayerState & {
 
   const enterRoom = useCallback(
     (code: string, color: PlayerColor | null, cfg: TeleportConfig, state: GameState, status: RoomStatus) => {
+      setRoomInUrl(code)
       setPhase('room')
       setRoomCode(code)
       setPlayerColor(color)
@@ -176,6 +188,7 @@ export function useMultiplayer(): MultiplayerState & {
   const createRoom = useCallback(async () => {
     setLoading(true)
     try {
+      await waitForSocketConnected()
       const res = await emitAck<CreateRoomAck>('createRoom', { config })
       if (!res.ok || !res.roomCode || !res.gameState || !res.config) {
         throw new Error(res.error || '创建房间失败')
@@ -186,22 +199,51 @@ export function useMultiplayer(): MultiplayerState & {
     }
   }, [config, enterRoom])
 
-  const joinRoom = useCallback(async () => {
-    const code = joinInput.trim()
-    if (!/^\d{4}$/.test(code)) {
-      throw new Error('请输入 4 位数字房间号')
-    }
-    setLoading(true)
-    try {
-      const res = await emitAck<JoinRoomAck>('joinRoom', { roomCode: code })
-      if (!res.ok || !res.roomCode || !res.color || !res.gameState || !res.config) {
-        throw new Error(res.error || '加入房间失败')
+  const joinRoomByCode = useCallback(
+    async (code: string) => {
+      const normalized = code.trim()
+      if (!/^\d{4}$/.test(normalized)) {
+        throw new Error('请输入 4 位数字房间号')
       }
-      enterRoom(res.roomCode, res.color, res.config, res.gameState, res.status ?? 'playing')
-    } finally {
-      setLoading(false)
-    }
-  }, [joinInput, enterRoom])
+      setLoading(true)
+      try {
+        await waitForSocketConnected()
+        const res = await emitAck<JoinRoomAck>('joinRoom', { roomCode: normalized })
+        if (!res.ok || !res.roomCode || !res.color || !res.gameState || !res.config) {
+          throw new Error(res.error || '加入房间失败')
+        }
+        enterRoom(res.roomCode, res.color, res.config, res.gameState, res.status ?? 'playing')
+      } finally {
+        setLoading(false)
+      }
+    },
+    [enterRoom],
+  )
+
+  const joinRoom = useCallback(async () => {
+    await joinRoomByCode(joinInput)
+  }, [joinInput, joinRoomByCode])
+
+  useEffect(() => {
+    if (autoJoinAttempted.current) return
+    const code = getRoomFromUrl()
+    if (!code) return
+
+    autoJoinAttempted.current = true
+    setJoinInput(code)
+    setAutoJoinRoomCode(code)
+    setAutoJoining(true)
+
+    void joinRoomByCode(code)
+      .catch((err) => {
+        setAutoJoinError(err instanceof Error ? err.message : '加入房间失败')
+      })
+      .finally(() => {
+        setAutoJoining(false)
+      })
+  }, [joinRoomByCode])
+
+  const clearAutoJoinError = useCallback(() => setAutoJoinError(null), [])
 
   const leaveRoom = useCallback(() => {
     emitAck('leaveRoom')
@@ -280,6 +322,10 @@ export function useMultiplayer(): MultiplayerState & {
     gameState,
     joinInput,
     loading,
+    autoJoining,
+    autoJoinRoomCode,
+    autoJoinError,
+    clearAutoJoinError,
     gameResult,
     canUndo,
     pendingOpponentRequest,
@@ -289,6 +335,7 @@ export function useMultiplayer(): MultiplayerState & {
     setConfig,
     createRoom,
     joinRoom,
+    joinRoomByCode,
     leaveRoom,
     resign,
     requestUndo,

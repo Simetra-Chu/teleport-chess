@@ -254,6 +254,15 @@ body {
   background: rgba(12, 74, 110, 0.45);
 }
 
+.room-invite-inline,
+.room-invite-card {
+  width: 100%;
+}
+
+.room-invite-url {
+  word-break: break-all;
+}
+
 /* 状态面板：手机横向滚动，避免挤压错位 */
 .game-status-grid {
   display: grid;

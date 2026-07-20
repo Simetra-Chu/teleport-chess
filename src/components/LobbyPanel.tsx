@@ -38,7 +38,7 @@ export default function LobbyPanel({
             <h2 className="mt-2 text-xl font-bold tracking-tight sm:mt-3 sm:text-2xl">
               瞬移国际象棋 · 联机对战
             </h2>
-            <p className="mt-2 text-sm text-white/45">创建房间邀请好友，或输入房间号加入对局</p>
+            <p className="mt-2 text-sm text-white/45">创建房间邀请好友，或输入房间号 / 邀请链接加入对局</p>
           </div>
 
           <div className="relative space-y-5 px-5 py-6 sm:space-y-6 sm:px-8 sm:py-8">
@@ -68,7 +68,9 @@ export default function LobbyPanel({
 
             <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
               <h3 className="text-sm font-semibold text-white/85">加入已有房间</h3>
-              <p className="mt-1 text-xs text-white/45">输入好友分享的 4 位数字房间号（加入后为黑方）</p>
+              <p className="mt-1 text-xs text-white/45">
+                输入好友分享的 4 位房间号，或直接打开邀请链接（加入后为黑方）
+              </p>
               <div className="join-room-row mt-4">
                 <input
                   type="text"
