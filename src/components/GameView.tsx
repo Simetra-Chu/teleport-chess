@@ -26,6 +26,7 @@ import {
 } from '../multiplayer/gameHelpers'
 import { emitAck } from '../multiplayer/socket'
 import { useIsTouchDevice } from '../hooks/useIsTouchDevice'
+import { useMobileGameLayout } from '../hooks/useMobileGameLayout'
 import { useLegalHighlights } from '../hooks/useLegalHighlights'
 import RuleConfigPanel from './RuleConfigPanel'
 import TeleportModeButton from './TeleportModeButton'
@@ -156,6 +157,7 @@ export default function GameView({
   const [message, setMessage] = useState('点击己方棋子，再点目标格走棋')
 
   const isTouch = useIsTouchDevice()
+  const isMobileLayout = useMobileGameLayout()
 
   const toggleTeleportMode = useCallback(() => {
     setTeleportMode((prev) => {
@@ -522,14 +524,12 @@ export default function GameView({
   const isWaitingHost =
     isOnline && roomStatus === 'waiting' && playerColor === 'white' && !!roomCode
 
-  if (isTouch && isWaitingHost) {
+  if (isMobileLayout && isWaitingHost) {
     return (
       <main className="game-page game-page--has-dock game-page--waiting-host">
         <div className="waiting-host-shell">
           <WaitingRoomCard roomCode={roomCode!} />
         </div>
-
-        {chatPanel}
 
         <div className="mobile-game-dock lg:hidden">
           <button type="button" onClick={onLeaveRoom} className="mobile-game-dock-leave">
@@ -565,7 +565,7 @@ export default function GameView({
               </div>
             )}
 
-            {isWaitingHost && !isTouch && <WaitingRoomPanel roomCode={roomCode!} />}
+            {isWaitingHost && !isMobileLayout && <WaitingRoomPanel roomCode={roomCode!} />}
 
             {outcome.status === 'checkmate' && !resigned && !timedOut && (
               <div className="chess-board-overlay">
@@ -649,7 +649,9 @@ export default function GameView({
             />
           )}
 
-          {chatPanel && <div className="game-board-chat hidden lg:block">{chatPanel}</div>}
+          {chatPanel && roomStatus === 'playing' && (
+            <div className="game-board-chat hidden lg:block">{chatPanel}</div>
+          )}
         </section>
 
         {/* 手机：下方信息/记录；桌面：右侧边栏 */}
