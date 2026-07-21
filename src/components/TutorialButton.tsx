@@ -31,7 +31,7 @@ export default function TutorialButton({ onClick, variant = 'header' }: Tutorial
         type="button"
         onClick={onClick}
         title="玩法教程"
-        className="tutorial-float-btn fixed bottom-5 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-amber-600 text-lg shadow-lg shadow-amber-900/40 ring-2 ring-amber-300/30 transition hover:scale-105 sm:bottom-6 sm:right-6 sm:h-14 sm:w-14 sm:text-xl safe-bottom-offset"
+        className="tutorial-float-btn fixed z-40 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-amber-600 text-lg shadow-lg shadow-amber-900/40 ring-2 ring-amber-300/30 transition hover:scale-105 sm:h-14 sm:w-14 sm:text-xl"
       >
         📖
       </button>

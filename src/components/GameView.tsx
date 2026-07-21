@@ -542,7 +542,7 @@ export default function GameView({
 
   return (
     <main
-      className={`game-page${isTouch ? ' game-page--has-dock' : ''}${isTouch && roomStatus === 'playing' ? ' game-page--playing-dock' : ''}`}
+      className={`game-page${isMobileLayout && isTouch ? ' game-page--has-dock' : ''}${isMobileLayout && isTouch && roomStatus === 'playing' ? ' game-page--playing-dock' : ''}`}
     >
       <div className="game-layout">
         {/* 手机：上方棋盘；桌面：左侧棋盘 */}

@@ -236,7 +236,7 @@ export default function GameChatPanel({
   if (compact) {
     return createPortal(
       <>
-        {!sheetOpen && (
+        {!sheetOpen && !disabled && (
           <button
             type="button"
             className="game-chat-fab"

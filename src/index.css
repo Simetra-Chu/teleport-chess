@@ -145,8 +145,7 @@ body {
   .game-info-column {
     position: sticky;
     top: calc(var(--header-h) + 0.75rem);
-    max-height: calc(100dvh - var(--header-h) - 1.5rem);
-    overflow-y: auto;
+    align-self: start;
   }
 }
 
@@ -308,14 +307,6 @@ body {
     );
   }
 
-  .game-page--playing-dock .game-chat-fab {
-    bottom: calc(7.5rem + env(safe-area-inset-bottom, 0px) + 3.75rem);
-  }
-
-  .game-page--playing-dock .tutorial-float-btn {
-    bottom: calc(7.5rem + env(safe-area-inset-bottom, 0px) + 0.75rem);
-  }
-
   /* 移动端聊天只走浮层，禁止内嵌占高 */
   .game-board-chat,
   .game-chat-panel:not(.game-chat-panel--sheet) {
@@ -344,12 +335,17 @@ body {
   display: block;
 }
 
-/* 手机端操作栏：桌面在侧栏内 */
+/* 手机端操作栏：仅桌面侧栏显示（移动端走底部 dock） */
 .mobile-action-bar {
-  display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
   width: 100%;
+}
+
+@media (min-width: 1024px) {
+  .mobile-action-bar {
+    display: flex;
+  }
 }
 
 .mobile-game-dock {
@@ -445,14 +441,35 @@ body {
   background: transparent;
 }
 
+.tutorial-float-btn {
+  position: fixed;
+  z-index: 40;
+}
+
+@media (min-width: 1024px) {
+  .tutorial-float-btn {
+    bottom: 1.5rem;
+    right: 1.5rem;
+  }
+}
+
 @media (max-width: 1023px) {
+  /* FAB 挂到 body，需用 :has 读取对局页状态（playing 时 dock 更高） */
+  body:has(.game-page--playing-dock) {
+    --mobile-dock-h: 7.5rem;
+  }
+
+  .tutorial-float-btn {
+    bottom: calc(var(--mobile-dock-h) + env(safe-area-inset-bottom, 0px) + 0.5rem);
+    right: max(var(--page-x), env(safe-area-inset-right, 0px));
+  }
+
   .game-chat-fab {
     bottom: calc(var(--mobile-dock-h) + env(safe-area-inset-bottom, 0px) + 3.75rem);
   }
 
-  .tutorial-float-btn {
-    bottom: calc(var(--mobile-dock-h) + env(safe-area-inset-bottom, 0px) + 0.75rem);
-    right: max(var(--page-x), env(safe-area-inset-right, 0px));
+  body:has(.game-page--playing-dock) .game-chat-fab {
+    bottom: calc(7.5rem + env(safe-area-inset-bottom, 0px) + 3.75rem);
   }
 }
 
@@ -597,7 +614,7 @@ body {
 .game-chat-fab {
   position: fixed;
   right: max(var(--page-x), env(safe-area-inset-right, 0px));
-  bottom: calc(5.25rem + env(safe-area-inset-bottom, 0px));
+  bottom: calc(var(--mobile-dock-h) + env(safe-area-inset-bottom, 0px) + 3.75rem);
   z-index: 35;
   display: inline-flex;
   align-items: center;
