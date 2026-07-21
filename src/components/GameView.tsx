@@ -542,7 +542,7 @@ export default function GameView({
 
   return (
     <main
-      className={`game-page${isMobileLayout && isTouch ? ' game-page--has-dock' : ''}${isMobileLayout && isTouch && roomStatus === 'playing' ? ' game-page--playing-dock' : ''}`}
+      className={`game-page${isMobileLayout ? ' game-page--has-dock' : ''}${isMobileLayout && roomStatus === 'playing' ? ' game-page--playing-dock' : ''}`}
     >
       <div className="game-layout">
         {/* 手机：上方棋盘；桌面：左侧棋盘 */}
@@ -729,7 +729,8 @@ export default function GameView({
             {message}
           </p>
 
-          <div className="mobile-action-bar hidden lg:flex">
+          {!isMobileLayout && (
+          <div className="mobile-action-bar">
             <TeleportModeButton
               teleportMode={teleportMode}
               disabled={!canPlay || gameOver}
@@ -789,6 +790,7 @@ export default function GameView({
               </button>
             )}
           </div>
+          )}
 
           <details className="mobile-rules-details lg:hidden">
             <summary className="mobile-rules-summary">本局规则</summary>
@@ -821,7 +823,7 @@ export default function GameView({
         </aside>
       </div>
 
-      {isTouch && (
+      {isMobileLayout && (
         <div className={`mobile-game-dock lg:hidden${roomStatus === 'playing' ? ' mobile-game-dock--playing' : ''}`}>
           {roomStatus === 'playing' && (
             <>

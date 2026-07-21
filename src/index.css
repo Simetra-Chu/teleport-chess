@@ -5,6 +5,7 @@
   --board-max: 560px;
   --header-h: 4.25rem;
   --mobile-dock-h: 3.25rem;
+  --mobile-playing-dock-h: 9.75rem;
   --mobile-info-reserve: 5.5rem;
 }
 
@@ -16,7 +17,7 @@
 
 html {
   -webkit-text-size-adjust: 100%;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 body {
@@ -27,14 +28,12 @@ body {
   background: radial-gradient(ellipse at 15% 0%, #1e1e32 0%, #0d0d14 65%);
   -webkit-font-smoothing: antialiased;
   overscroll-behavior-y: none;
-  overflow-x: hidden;
 }
 
 #root,
 .app-shell {
   min-height: 100vh;
   min-height: 100dvh;
-  overflow-x: hidden;
   width: 100%;
 }
 
@@ -75,7 +74,7 @@ body {
   }
 
   .game-page--has-dock:has(.mobile-game-dock--playing) {
-    padding-bottom: calc(7.5rem + env(safe-area-inset-bottom, 0px) + 0.75rem);
+    padding-bottom: calc(var(--mobile-playing-dock-h) + env(safe-area-inset-bottom, 0px) + 0.75rem);
   }
 
   .game-layout {
@@ -294,14 +293,14 @@ body {
     width: min(
       calc(100vw - 2 * max(var(--page-x), env(safe-area-inset-left, 0px))),
       calc(
-        100dvh - var(--header-h) - 7.5rem - var(--mobile-info-reserve) -
+        100dvh - var(--header-h) - var(--mobile-playing-dock-h) - var(--mobile-info-reserve) -
           env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 1.25rem
       )
     );
     max-width: min(
       calc(100vw - 2 * max(var(--page-x), env(safe-area-inset-left, 0px))),
       calc(
-        100dvh - var(--header-h) - 7.5rem - var(--mobile-info-reserve) -
+        100dvh - var(--header-h) - var(--mobile-playing-dock-h) - var(--mobile-info-reserve) -
           env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 1.25rem
       )
     );
@@ -342,6 +341,12 @@ body {
   width: 100%;
 }
 
+@media (max-width: 1023px) {
+  .mobile-action-bar {
+    display: none !important;
+  }
+}
+
 @media (min-width: 1024px) {
   .mobile-action-bar {
     display: flex;
@@ -367,7 +372,7 @@ body {
 }
 
 .mobile-game-dock--playing {
-  --mobile-dock-h: 7.5rem;
+  --mobile-dock-h: var(--mobile-playing-dock-h);
 }
 
 .mobile-game-dock .mode-toggle-wrap {
@@ -454,22 +459,21 @@ body {
 }
 
 @media (max-width: 1023px) {
-  /* FAB 挂到 body，需用 :has 读取对局页状态（playing 时 dock 更高） */
-  body:has(.game-page--playing-dock) {
-    --mobile-dock-h: 7.5rem;
+  /* playing 时 dock 实际更高；FAB 挂到 body，用 :has 同步变量 */
+  body:has(.mobile-game-dock--playing) {
+    --mobile-dock-h: var(--mobile-playing-dock-h);
   }
 
+  /* 移动端顶栏已有教程入口，隐藏右下角浮动教程避免与操作区重叠 */
   .tutorial-float-btn {
-    bottom: calc(var(--mobile-dock-h) + env(safe-area-inset-bottom, 0px) + 0.5rem);
-    right: max(var(--page-x), env(safe-area-inset-right, 0px));
+    display: none;
   }
 
+  /* 聊天按钮放左下角，避开右侧操作 dock */
   .game-chat-fab {
-    bottom: calc(var(--mobile-dock-h) + env(safe-area-inset-bottom, 0px) + 3.75rem);
-  }
-
-  body:has(.game-page--playing-dock) .game-chat-fab {
-    bottom: calc(7.5rem + env(safe-area-inset-bottom, 0px) + 3.75rem);
+    left: max(var(--page-x), env(safe-area-inset-left, 0px));
+    right: auto;
+    bottom: calc(var(--mobile-dock-h) + env(safe-area-inset-bottom, 0px) + 0.5rem);
   }
 }
 
@@ -614,7 +618,7 @@ body {
 .game-chat-fab {
   position: fixed;
   right: max(var(--page-x), env(safe-area-inset-right, 0px));
-  bottom: calc(var(--mobile-dock-h) + env(safe-area-inset-bottom, 0px) + 3.75rem);
+  bottom: calc(var(--mobile-dock-h) + env(safe-area-inset-bottom, 0px) + 0.5rem);
   z-index: 35;
   display: inline-flex;
   align-items: center;

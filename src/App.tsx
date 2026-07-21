@@ -6,9 +6,11 @@ import AutoJoinSplash from './components/AutoJoinSplash'
 import TutorialModal from './components/TutorialModal'
 import TutorialButton from './components/TutorialButton'
 import { useMultiplayer } from './multiplayer/useMultiplayer'
+import { useMobileGameLayout } from './hooks/useMobileGameLayout'
 
 export default function App() {
   const mp = useMultiplayer()
+  const isMobileLayout = useMobileGameLayout()
   const { autoJoinError, clearAutoJoinError } = mp
   const [lobbyError, setLobbyError] = useState<string | null>(null)
   const [joinConfirmError, setJoinConfirmError] = useState<string | null>(null)
@@ -55,7 +57,7 @@ export default function App() {
   const showLobby = mp.phase === 'lobby' && !mp.autoJoining && !mp.joinPreview
 
   return (
-    <div className="app-shell app-shell--with-header min-h-[100dvh] overflow-x-hidden text-stone-100">
+    <div className="app-shell app-shell--with-header min-h-[100dvh] text-stone-100">
       <header className="app-header sticky top-0 z-30 border-b border-white/10 bg-black/40 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-[var(--page-x)] py-3 sm:gap-4 sm:py-4">
           <div className="min-w-0 flex-1">
@@ -96,7 +98,7 @@ export default function App() {
         onClose={() => setTutorialOpen(false)}
       />
 
-      {mp.phase === 'room' && (
+      {mp.phase === 'room' && !isMobileLayout && (
         <TutorialButton onClick={() => setTutorialOpen(true)} variant="float" />
       )}
 
