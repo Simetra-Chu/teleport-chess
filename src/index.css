@@ -3,10 +3,7 @@
 :root {
   --page-x: clamp(0.75rem, 3vw, 1.5rem);
   --board-max: 560px;
-  --header-h: 4.25rem;
-  --mobile-dock-h: 3.25rem;
-  --mobile-playing-dock-h: 9.75rem;
-  --mobile-info-reserve: 5.5rem;
+  --header-h: 3.75rem;
 }
 
 *,
@@ -66,15 +63,6 @@ body {
 @media (max-width: 1023px) {
   .game-page {
     padding-top: 0.5rem;
-    padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
-  }
-
-  .game-page--has-dock {
-    padding-bottom: calc(var(--mobile-dock-h) + env(safe-area-inset-bottom, 0px) + 0.75rem);
-  }
-
-  .game-page--has-dock:has(.mobile-game-dock--playing) {
-    padding-bottom: calc(var(--mobile-playing-dock-h) + env(safe-area-inset-bottom, 0px) + 0.75rem);
   }
 
   .game-layout {
@@ -83,7 +71,6 @@ body {
 
   .game-info-column {
     gap: 0.5rem;
-    padding-bottom: 0;
   }
 }
 
@@ -136,7 +123,7 @@ body {
 
 @media (max-width: 1023px) {
   .game-info-column {
-    padding-bottom: 0;
+    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
   }
 }
 
@@ -216,39 +203,24 @@ body {
     width: min(
       calc(100vw - 2 * max(var(--page-x), env(safe-area-inset-left, 0px))),
       calc(
-        100dvh - var(--header-h) - var(--mobile-dock-h) - var(--mobile-info-reserve) -
-          env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 1.25rem
+        100dvh - var(--header-h) - env(safe-area-inset-top, 0px) -
+          env(safe-area-inset-bottom, 0px) - 1rem
       )
     );
     max-width: min(
       calc(100vw - 2 * max(var(--page-x), env(safe-area-inset-left, 0px))),
       calc(
-        100dvh - var(--header-h) - var(--mobile-dock-h) - var(--mobile-info-reserve) -
-          env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 1.25rem
+        100dvh - var(--header-h) - env(safe-area-inset-top, 0px) -
+          env(safe-area-inset-bottom, 0px) - 1rem
       )
     );
     margin-inline: auto;
   }
 
-  .waiting-room-modal {
-    position: fixed;
-    top: calc(var(--header-h) + env(safe-area-inset-top, 0px));
-    right: 0;
-    bottom: calc(var(--mobile-dock-h) + env(safe-area-inset-bottom, 0px));
-    left: 0;
-    z-index: 40;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    padding: 1rem max(var(--page-x), env(safe-area-inset-left, 0px))
-      1rem max(var(--page-x), env(safe-area-inset-right, 0px));
-    background: rgba(0, 0, 0, 0.62);
-    backdrop-filter: blur(2px);
-  }
-
-  .waiting-room-modal-panel {
-    width: 100%;
-    max-width: 24rem;
-    margin: 0 auto;
+  /* 移动端聊天只走浮层，禁止内嵌占高 */
+  .game-board-chat,
+  .game-chat-panel:not(.game-chat-panel--sheet) {
+    display: none !important;
   }
 
   .game-page--waiting-host {
@@ -258,7 +230,6 @@ body {
       100dvh - var(--header-h) - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)
     );
     padding-top: 0.75rem;
-    padding-bottom: calc(var(--mobile-dock-h) + env(safe-area-inset-bottom, 0px) + 0.75rem);
   }
 
   .waiting-host-shell {
@@ -287,30 +258,6 @@ body {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     padding: 0.625rem 0.75rem;
   }
-
-  .game-page--playing-dock .chess-board-stack,
-  .game-page--playing-dock .chess-board-wrap {
-    width: min(
-      calc(100vw - 2 * max(var(--page-x), env(safe-area-inset-left, 0px))),
-      calc(
-        100dvh - var(--header-h) - var(--mobile-playing-dock-h) - var(--mobile-info-reserve) -
-          env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 1.25rem
-      )
-    );
-    max-width: min(
-      calc(100vw - 2 * max(var(--page-x), env(safe-area-inset-left, 0px))),
-      calc(
-        100dvh - var(--header-h) - var(--mobile-playing-dock-h) - var(--mobile-info-reserve) -
-          env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 1.25rem
-      )
-    );
-  }
-
-  /* 移动端聊天只走浮层，禁止内嵌占高 */
-  .game-board-chat,
-  .game-chat-panel:not(.game-chat-panel--sheet) {
-    display: none !important;
-  }
 }
 
 @media (min-width: 1024px) {
@@ -334,8 +281,9 @@ body {
   display: block;
 }
 
-/* 手机端操作栏：仅桌面侧栏显示（移动端走底部 dock） */
+/* 手机端操作栏：窄屏吸底 / 宽屏在侧栏 */
 .mobile-action-bar {
+  display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
   width: 100%;
@@ -343,77 +291,19 @@ body {
 
 @media (max-width: 1023px) {
   .mobile-action-bar {
-    display: none !important;
+    position: sticky;
+    bottom: 0;
+    z-index: 20;
+    margin-top: 0.25rem;
+    padding: 0.75rem 0 calc(0.5rem + env(safe-area-inset-bottom, 0px));
+    background: linear-gradient(to top, #0d0d14 70%, transparent);
   }
-}
 
-@media (min-width: 1024px) {
-  .mobile-action-bar {
-    display: flex;
+  .game-page--waiting-host .mobile-action-bar {
+    flex-shrink: 0;
+    margin-top: auto;
+    padding-inline: 0;
   }
-}
-
-.mobile-game-dock {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 28;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.625rem max(var(--page-x), env(safe-area-inset-left, 0px))
-    calc(0.625rem + env(safe-area-inset-bottom, 0px))
-    max(var(--page-x), env(safe-area-inset-right, 0px));
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(13, 13, 20, 0.96);
-  backdrop-filter: blur(10px);
-}
-
-.mobile-game-dock--playing {
-  --mobile-dock-h: var(--mobile-playing-dock-h);
-}
-
-.mobile-game-dock .mode-toggle-wrap {
-  flex: 1 1 100%;
-}
-
-.mobile-game-dock .mode-toggle-btn {
-  width: 100%;
-}
-
-.mobile-game-dock .game-control-bar {
-  flex: 1 1 100%;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-}
-
-.mobile-game-dock .game-control-bar::-webkit-scrollbar {
-  display: none;
-}
-
-.mobile-game-dock .game-control-btn {
-  flex: 0 0 auto;
-}
-
-.mobile-game-dock-leave {
-  min-height: 2.75rem;
-  width: 100%;
-  border-radius: 0.5rem;
-  border: 1px solid rgba(239, 68, 68, 0.35);
-  background: rgba(127, 29, 29, 0.28);
-  padding: 0.5rem 0.875rem;
-  font-size: 0.8125rem;
-  color: rgb(252, 165, 165);
-}
-
-.mobile-game-dock--playing .mobile-game-dock-leave {
-  width: auto;
-  flex: 0 0 auto;
-  min-width: 5.5rem;
 }
 
 .mobile-rules-details {
@@ -444,43 +334,6 @@ body {
   border: 0;
   border-radius: 0;
   background: transparent;
-}
-
-.tutorial-float-btn {
-  position: fixed;
-  z-index: 40;
-}
-
-@media (min-width: 1024px) {
-  .tutorial-float-btn {
-    bottom: 1.5rem;
-    right: 1.5rem;
-  }
-}
-
-@media (max-width: 1023px) {
-  /* playing 时 dock 实际更高；FAB 挂到 body，用 :has 同步变量 */
-  body:has(.mobile-game-dock--playing) {
-    --mobile-dock-h: var(--mobile-playing-dock-h);
-  }
-
-  /* 移动端顶栏已有教程入口，隐藏右下角浮动教程避免与操作区重叠 */
-  .tutorial-float-btn {
-    display: none;
-  }
-
-  /* 聊天按钮放左下角，避开右侧操作 dock */
-  .game-chat-fab {
-    left: max(var(--page-x), env(safe-area-inset-left, 0px));
-    right: auto;
-    bottom: calc(var(--mobile-dock-h) + env(safe-area-inset-bottom, 0px) + 0.5rem);
-  }
-}
-
-@media (min-width: 1024px) {
-  .mobile-game-dock {
-    display: none;
-  }
 }
 
 .game-control-bar {
@@ -618,7 +471,7 @@ body {
 .game-chat-fab {
   position: fixed;
   right: max(var(--page-x), env(safe-area-inset-right, 0px));
-  bottom: calc(var(--mobile-dock-h) + env(safe-area-inset-bottom, 0px) + 0.5rem);
+  bottom: calc(5.25rem + env(safe-area-inset-bottom, 0px));
   z-index: 35;
   display: inline-flex;
   align-items: center;

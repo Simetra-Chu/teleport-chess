@@ -526,13 +526,17 @@ export default function GameView({
 
   if (isMobileLayout && isWaitingHost) {
     return (
-      <main className="game-page game-page--has-dock game-page--waiting-host">
+      <main className="game-page game-page--waiting-host">
         <div className="waiting-host-shell">
           <WaitingRoomCard roomCode={roomCode!} />
         </div>
 
-        <div className="mobile-game-dock lg:hidden">
-          <button type="button" onClick={onLeaveRoom} className="mobile-game-dock-leave">
+        <div className="mobile-action-bar">
+          <button
+            type="button"
+            onClick={onLeaveRoom}
+            className="min-h-11 w-full rounded-lg border border-red-500/30 px-5 py-2.5 text-sm text-red-300 transition hover:bg-red-950/40"
+          >
             离开房间
           </button>
         </div>
@@ -541,9 +545,7 @@ export default function GameView({
   }
 
   return (
-    <main
-      className={`game-page${isMobileLayout ? ' game-page--has-dock' : ''}${isMobileLayout && roomStatus === 'playing' ? ' game-page--playing-dock' : ''}`}
-    >
+    <main className="game-page">
       <div className="game-layout">
         {/* 手机：上方棋盘；桌面：左侧棋盘 */}
         <section className="game-board-column">
@@ -659,11 +661,11 @@ export default function GameView({
           <div className="game-status-grid rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-center text-xs sm:text-sm">
             {isOnline && (
               <>
-                <div className="hidden lg:block">
+                <div>
                   <p className="text-white/40">房间号</p>
                   <p className="font-mono font-bold tracking-widest text-purple-400">{roomCode}</p>
                 </div>
-                <div className="hidden lg:block">
+                <div>
                   <p className="text-white/40">你的阵营</p>
                   <p className="font-semibold text-amber-400">
                     {playerColor ? colorLabel(playerColor) : '—'}
@@ -708,28 +710,25 @@ export default function GameView({
           )}
 
           {!myTurn && canPlay && !gameOver && (
-            <p className="hidden rounded-lg border border-orange-500/30 bg-orange-950/30 px-3 py-2 text-center text-xs text-orange-300 sm:text-sm lg:block">
+            <p className="rounded-lg border border-orange-500/30 bg-orange-950/30 px-3 py-2 text-center text-xs text-orange-300 sm:text-sm">
               等待对手走棋…
             </p>
           )}
 
-          {isTouch && canPlay && !gameOver && roomStatus === 'playing' && (
-            <p className="hidden rounded-lg border border-sky-500/25 bg-sky-950/25 px-3 py-2 text-center text-xs text-sky-300 sm:text-sm lg:block">
+          {isTouch && canPlay && !gameOver && (
+            <p className="rounded-lg border border-sky-500/25 bg-sky-950/25 px-3 py-2 text-center text-xs text-sky-300 sm:text-sm">
               触屏：先点己方子，再点目标格走棋
             </p>
           )}
 
           {isOnline && roomStatus === 'waiting' && playerColor === 'white' && roomCode && (
-            <div className="hidden lg:block">
-              <RoomInviteShare roomCode={roomCode} variant="inline" />
-            </div>
+            <RoomInviteShare roomCode={roomCode} variant="inline" />
           )}
 
-          <p className="hidden rounded-lg border border-white/10 bg-black/30 px-3 py-2.5 text-center text-xs text-white/70 sm:text-sm lg:block">
+          <p className="rounded-lg border border-white/10 bg-black/30 px-3 py-2.5 text-center text-xs text-white/70 sm:text-sm">
             {message}
           </p>
 
-          {!isMobileLayout && (
           <div className="mobile-action-bar">
             <TeleportModeButton
               teleportMode={teleportMode}
@@ -790,105 +789,20 @@ export default function GameView({
               </button>
             )}
           </div>
-          )}
 
-          <details className="mobile-rules-details lg:hidden">
-            <summary className="mobile-rules-summary">本局规则</summary>
-            <RuleConfigPanel
-              config={config}
-              onChange={() => {}}
-              readOnly
-              title="本局规则"
-              hint={
-                roomStatus === 'waiting' && playerColor === 'white'
-                  ? '等待对手加入，规则已锁定'
-                  : '以下规则由房主在创建房间时设定'
-              }
-            />
-          </details>
-
-          <div className="hidden lg:block">
-            <RuleConfigPanel
-              config={config}
-              onChange={() => {}}
-              readOnly
-              title="本局规则"
-              hint={
-                roomStatus === 'waiting' && playerColor === 'white'
-                  ? '等待对手加入，规则已锁定'
-                  : '以下规则由房主在创建房间时设定'
-              }
-            />
-          </div>
+          <RuleConfigPanel
+            config={config}
+            onChange={() => {}}
+            readOnly
+            title="本局规则"
+            hint={
+              roomStatus === 'waiting' && playerColor === 'white'
+                ? '等待对手加入，规则已锁定'
+                : '以下规则由房主在创建房间时设定'
+            }
+          />
         </aside>
       </div>
-
-      {isMobileLayout && (
-        <div className={`mobile-game-dock lg:hidden${roomStatus === 'playing' ? ' mobile-game-dock--playing' : ''}`}>
-          {roomStatus === 'playing' && (
-            <>
-              <TeleportModeButton
-                teleportMode={teleportMode}
-                disabled={!canPlay || gameOver}
-                onToggle={toggleTeleportMode}
-              />
-
-              {isOnline && onResign && onRequestUndo && onRequestRestart && (
-                <GameControlBar
-                  disabled={gameOver}
-                  canRequestUndo={canRequestUndo}
-                  pendingMyUndoRequest={pendingMyUndoRequest}
-                  pendingMyRestartRequest={pendingMyRestartRequest}
-                  clockPaused={clockPaused}
-                  pendingMyPauseRequest={pendingMyPauseRequest}
-                  pendingMyResumeRequest={pendingMyResumeRequest}
-                  onResign={() => {
-                    if (!window.confirm('确定要认输吗？')) return
-                    void onResign().catch((e) =>
-                      setMessage(e instanceof Error ? e.message : '认输失败'),
-                    )
-                  }}
-                  onRequestUndo={() => {
-                    if (!canRequestUndo) {
-                      setMessage('你只能在自己走完棋后请求悔棋')
-                      return
-                    }
-                    void onRequestUndo().catch((e) =>
-                      setMessage(e instanceof Error ? e.message : '请求悔棋失败'),
-                    )
-                  }}
-                  onRequestPause={() => {
-                    void onRequestPause?.().catch((e) =>
-                      setMessage(e instanceof Error ? e.message : '请求暂停失败'),
-                    )
-                  }}
-                  onRequestResume={() => {
-                    void onRequestResume?.().catch((e) =>
-                      setMessage(e instanceof Error ? e.message : '请求恢复失败'),
-                    )
-                  }}
-                  onRequestRestart={() => {
-                    if (!window.confirm('向对手请求重新开始本局？')) return
-                    void onRequestRestart().catch((e) =>
-                      setMessage(e instanceof Error ? e.message : '请求重开失败'),
-                    )
-                  }}
-                />
-              )}
-            </>
-          )}
-
-          {isOnline && (
-            <button
-              type="button"
-              onClick={onLeaveRoom}
-              className="mobile-game-dock-leave"
-            >
-              离开房间
-            </button>
-          )}
-        </div>
-      )}
 
       <GameTutorialOverlay
         open={interactiveTutorial}

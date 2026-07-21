@@ -6,11 +6,9 @@ import AutoJoinSplash from './components/AutoJoinSplash'
 import TutorialModal from './components/TutorialModal'
 import TutorialButton from './components/TutorialButton'
 import { useMultiplayer } from './multiplayer/useMultiplayer'
-import { useMobileGameLayout } from './hooks/useMobileGameLayout'
 
 export default function App() {
   const mp = useMultiplayer()
-  const isMobileLayout = useMobileGameLayout()
   const { autoJoinError, clearAutoJoinError } = mp
   const [lobbyError, setLobbyError] = useState<string | null>(null)
   const [joinConfirmError, setJoinConfirmError] = useState<string | null>(null)
@@ -98,7 +96,7 @@ export default function App() {
         onClose={() => setTutorialOpen(false)}
       />
 
-      {mp.phase === 'room' && !isMobileLayout && (
+      {mp.phase === 'room' && (
         <TutorialButton onClick={() => setTutorialOpen(true)} variant="float" />
       )}
 
