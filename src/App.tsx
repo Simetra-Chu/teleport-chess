@@ -96,7 +96,7 @@ export default function App() {
         onClose={() => setTutorialOpen(false)}
       />
 
-      {mp.phase === 'room' && (
+      {mp.phase === 'room' && mp.roomStatus !== 'waiting' && (
         <TutorialButton onClick={() => setTutorialOpen(true)} variant="float" />
       )}
 

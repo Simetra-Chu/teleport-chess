@@ -506,25 +506,23 @@ export default function GameView({
           ? 'text-orange-400'
           : 'text-emerald-400'
 
+  const isWaitingHost =
+    isOnline && roomStatus === 'waiting' && playerColor === 'white' && !!roomCode
+
+  const useMobileWaitingPage = isWaitingHost && (isMobileLayout || isTouch)
+
   const chatPanel =
-    isOnline && onSendChatMessage ? (
+    isOnline && onSendChatMessage && roomStatus === 'playing' ? (
       <GameChatPanel
         messages={chatMessages}
         playerColor={playerColor}
         disabled={!canChat}
-        disabledHint={
-          roomStatus === 'waiting'
-            ? '等待对手加入后可聊天'
-            : '当前无法发送消息'
-        }
+        disabledHint="当前无法发送消息"
         onSend={onSendChatMessage}
       />
     ) : null
 
-  const isWaitingHost =
-    isOnline && roomStatus === 'waiting' && playerColor === 'white' && !!roomCode
-
-  if (isMobileLayout && isWaitingHost) {
+  if (useMobileWaitingPage) {
     return (
       <main className="game-page game-page--waiting-host">
         <div className="waiting-host-shell">
@@ -567,7 +565,9 @@ export default function GameView({
               </div>
             )}
 
-            {isWaitingHost && !isMobileLayout && <WaitingRoomPanel roomCode={roomCode!} />}
+            {isWaitingHost && !useMobileWaitingPage && (
+              <WaitingRoomPanel roomCode={roomCode!} />
+            )}
 
             {outcome.status === 'checkmate' && !resigned && !timedOut && (
               <div className="chess-board-overlay">
@@ -721,7 +721,7 @@ export default function GameView({
             </p>
           )}
 
-          {isOnline && roomStatus === 'waiting' && playerColor === 'white' && roomCode && (
+          {isOnline && roomStatus === 'waiting' && playerColor === 'white' && roomCode && !useMobileWaitingPage && (
             <RoomInviteShare roomCode={roomCode} variant="inline" />
           )}
 

@@ -2,7 +2,10 @@ import { useEffect, useState } from 'react'
 
 /** 与 CSS 断点 max-width: 1023px 一致 */
 export function useMobileGameLayout() {
-  const [mobile, setMobile] = useState(true)
+  const [mobile, setMobile] = useState(() => {
+    if (typeof window === 'undefined') return true
+    return window.matchMedia('(max-width: 1023px)').matches
+  })
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 1023px)')

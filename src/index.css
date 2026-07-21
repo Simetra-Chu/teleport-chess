@@ -3,7 +3,7 @@
 :root {
   --page-x: clamp(0.75rem, 3vw, 1.5rem);
   --board-max: 560px;
-  --header-h: 3.75rem;
+  --header-h: 4.25rem;
 }
 
 *,
@@ -226,10 +226,14 @@ body {
   .game-page--waiting-host {
     display: flex;
     flex-direction: column;
+    width: 100%;
+    max-width: 28rem;
     min-height: calc(
       100dvh - var(--header-h) - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)
     );
-    padding-top: 0.75rem;
+    margin-inline: auto;
+    padding-top: 1rem;
+    padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
   }
 
   .waiting-host-shell {
@@ -239,15 +243,20 @@ body {
     justify-content: center;
     width: 100%;
     min-height: 0;
-    padding-block: 0.5rem;
+    padding-block: 0.75rem;
   }
 
   .waiting-host-shell .waiting-room-card {
     width: 100%;
-    max-width: 24rem;
-    max-height: 100%;
+    max-width: 100%;
+    max-height: min(100%, calc(100dvh - var(--header-h) - 8rem));
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+  }
+
+  body:has(.game-page--waiting-host) .game-chat-fab,
+  body:has(.game-page--waiting-host) .tutorial-float-btn {
+    display: none;
   }
 
   .game-info-column--waiting {
