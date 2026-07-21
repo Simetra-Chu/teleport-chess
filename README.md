@@ -25,13 +25,30 @@ teleport-chess/
 │   └── multiplayer/     # Socket.io 客户端
 ├── server/              # Express + Socket.io 后端
 │   └── server.js
-├── vercel.json          # Vercel 前端部署
+├── vercel.json          # Vercel 前端部署（SPA + dist）
 └── .env.example
 ```
 
 ## 公网部署
 
-### 1. 后端（Railway / Render / Fly.io 等）
+前端使用 **Vercel**，后端使用 **Render**（或 Railway / Fly.io 等）。
+
+### 1. 前端（Vercel）
+
+1. 打开 [vercel.com](https://vercel.com) → **Add New Project** → 导入 GitHub 仓库 `teleport-chess`
+2. Framework Preset 选 **Vite**（或自动识别）
+3. **Root Directory** 保持仓库根目录（不要选 `server/`）
+4. **Environment Variables** 添加：
+
+```
+VITE_BACKEND_URL=https://你的后端地址.onrender.com
+```
+
+5. Deploy。记下 Vercel 域名，例如 `https://teleport-chess.vercel.app`
+
+配置已在仓库根目录 `vercel.json`（SPA 路由 + 构建输出 `dist`）。
+
+### 2. 后端（Render 等）
 
 部署 `server/` 目录：
 
@@ -44,19 +61,13 @@ teleport-chess/
 
 记录后端公网 URL，例如 `https://teleport-chess-api.onrender.com`
 
-### 2. 前端（Vercel）
+### 3. 互相关联
 
-1. 导入本仓库到 Vercel
-2. Framework Preset：**Vite**
-3. 添加环境变量：
+1. Vercel 环境变量 `VITE_BACKEND_URL` = 后端 URL（**不要**末尾斜杠）
+2. Render 环境变量 `FRONTEND_URL` = Vercel 域名（例如 `https://teleport-chess.vercel.app`）
+3. 修改后端 `FRONTEND_URL` 后需 **重新部署 Render**，CORS 才会生效
 
-```
-VITE_BACKEND_URL=https://your-backend-url.com
-```
-
-4. 部署完成后，将 Vercel 域名填回后端 `FRONTEND_URL`
-
-### 3. 验证
+### 4. 验证
 
 - 后端：`GET https://your-api/health` → `{ "ok": true }`
 - 前端：打开 Vercel 地址，创建房间，另一浏览器加入
