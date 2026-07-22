@@ -1,0 +1,69 @@
+import type { GameState, TeleportConfig } from '../chessEngine'
+import { getAllLegalMoves } from './legalMoves'
+import { applyAiMove } from './applyMove'
+import { evaluateBoard, isTerminalScore } from './evaluate'
+import type { AiMove } from './types'
+
+function searchBestMove(
+  state: GameState,
+  config: TeleportConfig,
+  depth: number,
+  aiIsWhite: boolean,
+): AiMove | null {
+  const moves = getAllLegalMoves(state, config)
+  if (moves.length === 0) return null
+
+  let bestMove = moves[0]
+  let bestScore = aiIsWhite ? -Infinity : Infinity
+
+  for (const move of moves) {
+    const next = applyAiMove(state, config, move)
+    const score = minimax(next, config, depth - 1, -Infinity, Infinity, !aiIsWhite)
+    if (aiIsWhite ? score > bestScore : score < bestScore) {
+      bestScore = score
+      bestMove = move
+    }
+  }
+
+  return bestMove
+}
+
+function minimax(
+  state: GameState,
+  config: TeleportConfig,
+  depth: number,
+  alpha: number,
+  beta: number,
+  maximizingForWhite: boolean,
+): number {
+  const terminal = isTerminalScore(state, config)
+  if (terminal !== null) return terminal
+  if (depth <= 0) return evaluateBoard(state, config)
+
+  const moves = getAllLegalMoves(state, config)
+  if (moves.length === 0) {
+    return evaluateBoard(state, config)
+  }
+
+  if (maximizingForWhite) {
+    let maxEval = -Infinity
+    for (const move of moves) {
+      const next = applyAiMove(state, config, move)
+      maxEval = Math.max(maxEval, minimax(next, config, depth - 1, alpha, beta, false))
+      alpha = Math.max(alpha, maxEval)
+      if (beta <= alpha) break
+    }
+    return maxEval
+  }
+
+  let minEval = Infinity
+  for (const move of moves) {
+    const next = applyAiMove(state, config, move)
+    minEval = Math.min(minEval, minimax(next, config, depth - 1, alpha, beta, true))
+    beta = Math.min(beta, minEval)
+    if (beta <= alpha) break
+  }
+  return minEval
+}
+
+export { searchBestMove, minimax }

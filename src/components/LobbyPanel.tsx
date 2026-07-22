@@ -1,10 +1,17 @@
 import type { TeleportConfig } from '../chessEngine'
+import type { AiDifficulty } from '../ai/types'
+import { AI_DIFFICULTY_LABELS } from '../ai/types'
+import type { PlayerColor } from '../multiplayer/types'
 import RuleConfigPanel from './RuleConfigPanel'
 import TutorialButton from './TutorialButton'
 import TimeLimitSelector from './TimeLimitSelector'
 import type { TimePreset } from '../utils/clockFormat'
 
+export type LobbyMode = 'online' | 'pve'
+
 interface LobbyPanelProps {
+  lobbyMode: LobbyMode
+  onLobbyModeChange: (mode: LobbyMode) => void
   joinInput: string
   loading: boolean
   config: TeleportConfig
@@ -18,9 +25,18 @@ interface LobbyPanelProps {
   onJoinRoom: () => void
   onOpenTutorial: () => void
   error: string | null
+  pveDifficulty: AiDifficulty
+  onPveDifficultyChange: (d: AiDifficulty) => void
+  pveColor: PlayerColor
+  onPveColorChange: (c: PlayerColor) => void
+  onStartPvE: () => void
+  pveConfig: TeleportConfig
+  onPveConfigChange: (partial: Partial<TeleportConfig>) => void
 }
 
 export default function LobbyPanel({
+  lobbyMode,
+  onLobbyModeChange,
   joinInput,
   loading,
   config,
@@ -34,15 +50,50 @@ export default function LobbyPanel({
   onJoinRoom,
   onOpenTutorial,
   error,
+  pveDifficulty,
+  onPveDifficultyChange,
+  pveColor,
+  onPveColorChange,
+  onStartPvE,
+  pveConfig,
+  onPveConfigChange,
 }: LobbyPanelProps) {
+  const difficulties: AiDifficulty[] = ['easy', 'medium', 'hard']
+
   return (
     <div className="lobby-page">
+      <div className="lobby-mode-tabs mx-auto mb-4 flex max-w-lg gap-2 rounded-2xl border border-white/10 bg-black/30 p-1">
+        <button
+          type="button"
+          onClick={() => onLobbyModeChange('online')}
+          className={`min-h-11 flex-1 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
+            lobbyMode === 'online'
+              ? 'bg-purple-600 text-white shadow-lg shadow-purple-900/30'
+              : 'text-white/55 hover:text-white/80'
+          }`}
+        >
+          在线联机
+        </button>
+        <button
+          type="button"
+          onClick={() => onLobbyModeChange('pve')}
+          className={`min-h-11 flex-1 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
+            lobbyMode === 'pve'
+              ? 'bg-amber-600 text-white shadow-lg shadow-amber-900/30'
+              : 'text-white/55 hover:text-white/80'
+          }`}
+        >
+          单机人机
+        </button>
+      </div>
+
       <div className="lobby-layout">
-        {/* 手机：上方创建/加入；桌面：左侧 */}
         <div className="relative w-full min-w-0 max-w-lg overflow-x-hidden rounded-3xl border border-white/10 bg-[#12121c] shadow-2xl shadow-black/50">
           <div className="pointer-events-none absolute -top-24 -right-24 h-48 w-48 rounded-full bg-amber-500/10 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-16 -left-16 h-40 w-40 rounded-full bg-purple-600/10 blur-3xl" />
 
+          {lobbyMode === 'online' ? (
+            <>
           <div className="relative border-b border-white/10 px-5 py-6 text-center sm:px-8 sm:py-7">
             <p className="text-3xl sm:text-4xl">♞</p>
             <h2 className="mt-2 text-xl font-bold tracking-tight sm:mt-3 sm:text-2xl">
@@ -108,10 +159,85 @@ export default function LobbyPanel({
               </p>
             )}
           </div>
+            </>
+          ) : (
+            <>
+          <div className="relative border-b border-white/10 px-5 py-6 text-center sm:px-8 sm:py-7">
+            <p className="text-3xl sm:text-4xl">🤖</p>
+            <h2 className="mt-2 text-xl font-bold tracking-tight sm:mt-3 sm:text-2xl">
+              单机人机对战
+            </h2>
+            <p className="mt-2 text-sm text-white/45">本地运行，AI 会灵活运用瞬移进行攻防</p>
+          </div>
+
+          <div className="relative space-y-5 px-5 py-6 sm:space-y-6 sm:px-8 sm:py-8">
+            <section className="rounded-2xl border border-sky-500/20 bg-sky-500/5 p-5">
+              <h3 className="text-sm font-semibold text-sky-300">难度</h3>
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                {difficulties.map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => onPveDifficultyChange(d)}
+                    className={`min-h-11 rounded-xl border px-2 py-2 text-sm font-semibold transition ${
+                      pveDifficulty === d
+                        ? 'border-sky-400/60 bg-sky-500/25 text-sky-100'
+                        : 'border-white/10 bg-black/20 text-white/55 hover:border-white/20'
+                    }`}
+                  >
+                    {AI_DIFFICULTY_LABELS[d]}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-3 text-xs leading-relaxed text-white/40">
+                简单：偏随机，优先吃子/瞬移；中等：2 层搜索；困难：3 层 Alpha-Beta，重视瞬移战术
+              </p>
+            </section>
+
+            <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+              <h3 className="text-sm font-semibold text-white/85">你的阵营</h3>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => onPveColorChange('white')}
+                  className={`min-h-11 rounded-xl border px-3 py-2.5 text-sm font-semibold transition ${
+                    pveColor === 'white'
+                      ? 'border-amber-400/50 bg-amber-500/15 text-amber-100'
+                      : 'border-white/10 text-white/55'
+                  }`}
+                >
+                  执白（先手）
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onPveColorChange('black')}
+                  className={`min-h-11 rounded-xl border px-3 py-2.5 text-sm font-semibold transition ${
+                    pveColor === 'black'
+                      ? 'border-purple-400/50 bg-purple-500/15 text-purple-100'
+                      : 'border-white/10 text-white/55'
+                  }`}
+                >
+                  执黑（后手）
+                </button>
+              </div>
+            </section>
+
+            <button
+              type="button"
+              onClick={onStartPvE}
+              className="w-full min-h-12 rounded-xl bg-gradient-to-r from-sky-600 to-purple-600 py-3 text-sm font-bold text-white shadow-lg shadow-purple-900/30 transition hover:from-sky-500 hover:to-purple-500 active:scale-[0.98]"
+            >
+              开始人机对局
+            </button>
+          </div>
+            </>
+          )}
         </div>
 
         {/* 手机：下方规则；桌面：右侧 */}
         <div className="w-full max-w-lg lg:max-w-sm lg:sticky lg:top-24 space-y-4">
+          {lobbyMode === 'online' ? (
+            <>
           <TimeLimitSelector
             preset={timePreset}
             customMinutes={customMinutes}
@@ -126,6 +252,15 @@ export default function LobbyPanel({
             title="房主规则设置"
             hint="创建房间时将以上规则同步给对手"
           />
+            </>
+          ) : (
+          <RuleConfigPanel
+            config={pveConfig}
+            onChange={onPveConfigChange}
+            title="本局规则"
+            hint="人机对局在本地运行，可自由调整瞬移规则"
+          />
+          )}
         </div>
       </div>
     </div>

@@ -47,6 +47,8 @@ import type {
   RoomStatus,
   UndoRequestEvent,
 } from '../multiplayer/types'
+import type { AiDifficulty } from '../ai/types'
+import { AI_DIFFICULTY_LABELS } from '../ai/types'
 
 type PendingMove = {
   fr: number
@@ -66,6 +68,10 @@ interface GameViewProps {
   roomCode: string | null
   roomStatus: RoomStatus | null
   isOnline: boolean
+  isPvE?: boolean
+  aiThinking?: boolean
+  aiDifficulty?: AiDifficulty
+  onRestartLocal?: () => void
   onLeaveRoom: () => void
   onOpponentSync: (handler: (event: import('../multiplayer/types').OpponentSyncEvent) => void) => () => void
   interactiveTutorial?: boolean
@@ -113,6 +119,10 @@ export default function GameView({
   roomCode,
   roomStatus,
   isOnline,
+  isPvE = false,
+  aiThinking = false,
+  aiDifficulty,
+  onRestartLocal,
   onLeaveRoom,
   onOpponentSync,
   interactiveTutorial = false,
@@ -179,7 +189,8 @@ export default function GameView({
   )
 
   const myTurn = isMyTurn(gameState, playerColor)
-  const canPlay = !isOnline || (roomStatus === 'playing' && !clockPaused)
+  const canPlay =
+    !aiThinking && (!isOnline || (roomStatus === 'playing' && !clockPaused))
   const resigned = gameResult?.reason === 'resign'
   const timedOut = gameResult?.reason === 'timeout'
   const fen = useMemo(() => boardToFen(gameState), [gameState])
@@ -206,6 +217,17 @@ export default function GameView({
       setMessage(`对局开始！你执${colorLabel(playerColor)}`)
     }
   }, [isOnline, roomStatus, playerColor])
+
+  useEffect(() => {
+    if (!isPvE || gameOver) return
+    if (aiThinking) {
+      setMessage('AI 思考中…')
+    } else if (myTurn) {
+      setMessage(`你的回合 · 难度 ${aiDifficulty ? AI_DIFFICULTY_LABELS[aiDifficulty] : ''}`)
+    } else {
+      setMessage('等待 AI 走棋…')
+    }
+  }, [isPvE, aiThinking, myTurn, gameOver, aiDifficulty])
 
   useEffect(() => {
     if (requestNotice) {
@@ -575,7 +597,12 @@ export default function GameView({
                   title="将死 Checkmate"
                   subtitle={`${outcome.winner === 'white' ? '白方' : '黑方'}获胜`}
                   tone="checkmate"
+                  actionLabel={isPvE ? '再来一局' : undefined}
                   onRestart={() => {
+                    if (isPvE && onRestartLocal) {
+                      onRestartLocal()
+                      return
+                    }
                     setGameState(initGame(config))
                     setMessage('本地棋盘已重置（联机需双方重新开局）')
                   }}
@@ -589,7 +616,12 @@ export default function GameView({
                   title="逼和 Stalemate"
                   subtitle="无合法走法且未被将军"
                   tone="stalemate"
+                  actionLabel={isPvE ? '再来一局' : undefined}
                   onRestart={() => {
+                    if (isPvE && onRestartLocal) {
+                      onRestartLocal()
+                      return
+                    }
                     setGameState(initGame(config))
                     setMessage('本地棋盘已重置')
                   }}
@@ -602,7 +634,7 @@ export default function GameView({
                   title="认输 Resign"
                   subtitle={`${gameResult.winner === 'white' ? '白方' : '黑方'}获胜`}
                   tone="resign"
-                  actionLabel="返回大厅"
+                  actionLabel={isPvE ? '返回大厅' : '返回大厅'}
                   onRestart={onLeaveRoom}
                 />
               </div>
@@ -736,6 +768,33 @@ export default function GameView({
               onToggle={toggleTeleportMode}
             />
 
+            {isPvE && onResign && (
+              <>
+                <button
+                  type="button"
+                  disabled={gameOver}
+                  onClick={() => {
+                    if (!window.confirm('确定要认输吗？')) return
+                    void onResign().catch((e) =>
+                      setMessage(e instanceof Error ? e.message : '认输失败'),
+                    )
+                  }}
+                  className="game-control-btn game-control-btn--resign min-h-11 flex-1 rounded-lg px-4 py-2.5 text-sm"
+                >
+                  认输
+                </button>
+                {onRestartLocal && (
+                  <button
+                    type="button"
+                    onClick={onRestartLocal}
+                    className="game-control-btn min-h-11 flex-1 rounded-lg border border-sky-500/35 bg-sky-950/30 px-4 py-2.5 text-sm text-sky-200"
+                  >
+                    重新开始
+                  </button>
+                )}
+              </>
+            )}
+
             {isOnline && roomStatus === 'playing' && onResign && onRequestUndo && onRequestRestart && (
               <GameControlBar
                 disabled={gameOver}
@@ -779,7 +838,7 @@ export default function GameView({
               />
             )}
 
-            {isOnline && (
+            {(isOnline || isPvE) && (
               <button
                 type="button"
                 onClick={onLeaveRoom}

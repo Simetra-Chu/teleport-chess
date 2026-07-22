@@ -1,18 +1,24 @@
 import { useEffect, useState } from 'react'
 import JoinRoomConfirmPanel from './components/JoinRoomConfirmPanel'
 import GameView from './components/GameView'
-import LobbyPanel from './components/LobbyPanel'
+import LobbyPanel, { type LobbyMode } from './components/LobbyPanel'
 import AutoJoinSplash from './components/AutoJoinSplash'
 import TutorialModal from './components/TutorialModal'
 import TutorialButton from './components/TutorialButton'
 import { useMultiplayer } from './multiplayer/useMultiplayer'
+import { usePvE } from './pve/usePvE'
+import { AI_DIFFICULTY_LABELS } from './ai/types'
+import type { PlayerColor } from './multiplayer/types'
 
 export default function App() {
   const mp = useMultiplayer()
+  const pve = usePvE()
   const { autoJoinError, clearAutoJoinError } = mp
   const [lobbyError, setLobbyError] = useState<string | null>(null)
   const [joinConfirmError, setJoinConfirmError] = useState<string | null>(null)
   const [tutorialOpen, setTutorialOpen] = useState(false)
+  const [lobbyMode, setLobbyMode] = useState<LobbyMode>('online')
+  const [pveLobbyColor, setPveLobbyColor] = useState<PlayerColor>('white')
 
   useEffect(() => {
     if (!autoJoinError) return
@@ -52,7 +58,32 @@ export default function App() {
     mp.cancelJoinPreview()
   }
 
-  const showLobby = mp.phase === 'lobby' && !mp.autoJoining && !mp.joinPreview
+  const handleStartPvE = () => {
+    pve.startGame(pveLobbyColor, pve.difficulty, pve.config)
+  }
+
+  const inPvEGame = pve.phase === 'game'
+  const inOnlineGame = mp.phase === 'room'
+  const showLobby =
+    !inPvEGame && !inOnlineGame && !mp.autoJoining && !mp.joinPreview
+
+  const headerSubtitle = inPvEGame
+    ? `单机人机 · ${AI_DIFFICULTY_LABELS[pve.difficulty]} · 你执${pve.playerColor === 'white' ? '白' : '黑'}`
+    : mp.autoJoining
+      ? `正在加载房间 ${mp.autoJoinRoomCode ?? ''} 规则…`
+      : mp.joinPreview
+        ? `确认加入房间 ${mp.joinPreview.roomCode}`
+        : showLobby
+          ? lobbyMode === 'pve'
+            ? '单机人机 · 选择难度与阵营'
+            : '联机对战 · 创建或加入房间'
+          : `房间 ${mp.roomCode} · ${
+              mp.roomStatus === 'waiting'
+                ? '等待对手'
+                : mp.roomStatus === 'finished'
+                  ? '对局已结束'
+                  : '在线对战中'
+            }`
 
   return (
     <div className="app-shell app-shell--with-header min-h-[100dvh] text-stone-100">
@@ -60,31 +91,23 @@ export default function App() {
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-[var(--page-x)] py-3 sm:gap-4 sm:py-4">
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-base font-bold tracking-tight sm:text-xl">瞬移国际象棋</h1>
-            <p className="truncate text-[11px] text-white/45 sm:text-xs">
-              {mp.autoJoining
-                ? `正在加载房间 ${mp.autoJoinRoomCode ?? ''} 规则…`
-                : mp.joinPreview
-                  ? `确认加入房间 ${mp.joinPreview.roomCode}`
-                  : mp.phase === 'lobby'
-                  ? '联机对战 · 创建或加入房间'
-                  : `房间 ${mp.roomCode} · ${
-                      mp.roomStatus === 'waiting'
-                        ? '等待对手'
-                        : mp.roomStatus === 'finished'
-                          ? '对局已结束'
-                          : '在线对战中'
-                    }`}
-            </p>
+            <p className="truncate text-[11px] text-white/45 sm:text-xs">{headerSubtitle}</p>
           </div>
 
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <TutorialButton onClick={() => setTutorialOpen(true)} variant="header" />
 
-            {mp.phase === 'room' && (
+            {inOnlineGame && (
               <span className="hidden rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-400 sm:inline sm:px-4 sm:py-1.5">
                 {mp.playerColor
                   ? `你执${mp.playerColor === 'white' ? '白' : '黑'}`
                   : '联机中'}
+              </span>
+            )}
+
+            {inPvEGame && (
+              <span className="hidden rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-xs font-medium text-sky-300 sm:inline sm:px-4 sm:py-1.5">
+                vs AI
               </span>
             )}
           </div>
@@ -96,7 +119,7 @@ export default function App() {
         onClose={() => setTutorialOpen(false)}
       />
 
-      {mp.phase === 'room' && mp.roomStatus !== 'waiting' && (
+      {((inOnlineGame && mp.roomStatus !== 'waiting') || inPvEGame) && (
         <TutorialButton onClick={() => setTutorialOpen(true)} variant="float" />
       )}
 
@@ -112,6 +135,8 @@ export default function App() {
         />
       ) : showLobby ? (
         <LobbyPanel
+          lobbyMode={lobbyMode}
+          onLobbyModeChange={setLobbyMode}
           joinInput={mp.joinInput}
           loading={mp.loading}
           config={mp.config}
@@ -125,6 +150,33 @@ export default function App() {
           onJoinRoom={handleJoin}
           onOpenTutorial={() => setTutorialOpen(true)}
           error={lobbyError}
+          pveDifficulty={pve.difficulty}
+          onPveDifficultyChange={pve.setDifficulty}
+          pveColor={pveLobbyColor}
+          onPveColorChange={setPveLobbyColor}
+          onStartPvE={handleStartPvE}
+          pveConfig={pve.config}
+          onPveConfigChange={pve.patchConfig}
+        />
+      ) : inPvEGame ? (
+        <GameView
+          config={pve.config}
+          gameState={pve.gameState}
+          setGameState={pve.setGameState}
+          playerColor={pve.playerColor}
+          roomCode="人机"
+          roomStatus="playing"
+          isOnline={false}
+          isPvE
+          aiThinking={pve.aiThinking}
+          aiDifficulty={pve.difficulty}
+          onLeaveRoom={pve.leaveGame}
+          onOpponentSync={() => () => {}}
+          interactiveTutorial={tutorialOpen}
+          onTutorialClose={() => setTutorialOpen(false)}
+          gameResult={pve.gameResult}
+          onResign={pve.resign}
+          onRestartLocal={pve.restartGame}
         />
       ) : (
         <GameView
