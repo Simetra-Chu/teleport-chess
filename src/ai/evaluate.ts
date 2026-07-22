@@ -5,7 +5,7 @@ import {
   inCheck,
   isWhite,
 } from '../chessEngine'
-import { getAllLegalMoves } from './legalMoves'
+import { hasAnyLegalMove } from './legalMoves'
 
 const PIECE_VALUES: Record<string, number> = {
   P: 10,
@@ -63,8 +63,7 @@ export function isTerminalScore(state: GameState, config: TeleportConfig): numbe
   if (wkr === -1) return -99999
   if (bkr === -1) return 99999
 
-  const moves = getAllLegalMoves(state, config)
-  if (moves.length > 0) return null
+  if (hasAnyLegalMove(state, config, true)) return null
 
   if (inCheck(state.board, state.white_turn)) {
     return state.white_turn ? -99999 : 99999

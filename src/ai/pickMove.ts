@@ -30,9 +30,9 @@ export function pickAiMove(
     return pickEasy(state, moves)
   }
 
-  const depth = difficulty === 'medium' ? 2 : 3
+  const depth = difficulty === 'medium' ? 1 : 2
   return searchBestMove(state, config, depth, aiIsWhite)
 }
 
 /** 前端模拟思考延迟（毫秒） */
-export const AI_THINK_DELAY_MS = 180
+export const AI_THINK_DELAY_MS = 60

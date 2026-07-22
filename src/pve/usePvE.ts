@@ -88,11 +88,15 @@ export function usePvE() {
 
     aiTimerRef.current = setTimeout(() => {
       if (runId !== aiRunIdRef.current) return
-      const move = pickAiMove(snapshot, cfg, diff, aiIsWhite)
-      if (move) {
-        setGameState(applyAiMove(snapshot, cfg, move))
-      }
-      setAiThinking(false)
+      // 先让 UI 刷出「思考中」，再同步算棋（已大幅剪枝）
+      requestAnimationFrame(() => {
+        if (runId !== aiRunIdRef.current) return
+        const move = pickAiMove(snapshot, cfg, diff, aiIsWhite)
+        if (move) {
+          setGameState(applyAiMove(snapshot, cfg, move))
+        }
+        setAiThinking(false)
+      })
     }, AI_THINK_DELAY_MS)
 
     return () => {

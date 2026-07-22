@@ -4,15 +4,32 @@ import { applyAiMove } from './applyMove'
 import { evaluateBoard, isTerminalScore } from './evaluate'
 import type { AiMove } from './types'
 
+const ROOT_MOVE_CAP = 32
+
+function moveHeuristic(state: GameState, move: AiMove): number {
+  let score = move.kind === 'teleport' ? 8 : 0
+  const target = state.board[move.tr][move.tc]
+  if (target !== '.') {
+    const vals: Record<string, number> = { p: 10, n: 30, b: 30, r: 50, q: 90 }
+    score += vals[target.toLowerCase()] ?? 5
+  }
+  return score
+}
+
+function orderMoves(state: GameState, moves: AiMove[]): AiMove[] {
+  return [...moves].sort((a, b) => moveHeuristic(state, b) - moveHeuristic(state, a))
+}
+
 function searchBestMove(
   state: GameState,
   config: TeleportConfig,
   depth: number,
   aiIsWhite: boolean,
 ): AiMove | null {
-  const moves = getAllLegalMoves(state, config)
-  if (moves.length === 0) return null
+  const rootMoves = orderMoves(state, getAllLegalMoves(state, config, { forSearch: false }))
+  if (rootMoves.length === 0) return null
 
+  const moves = rootMoves.slice(0, ROOT_MOVE_CAP)
   let bestMove = moves[0]
   let bestScore = aiIsWhite ? -Infinity : Infinity
 
@@ -40,10 +57,8 @@ function minimax(
   if (terminal !== null) return terminal
   if (depth <= 0) return evaluateBoard(state, config)
 
-  const moves = getAllLegalMoves(state, config)
-  if (moves.length === 0) {
-    return evaluateBoard(state, config)
-  }
+  const moves = orderMoves(state, getAllLegalMoves(state, config, { forSearch: true, maxMoves: 24 }))
+  if (moves.length === 0) return evaluateBoard(state, config)
 
   if (maximizingForWhite) {
     let maxEval = -Infinity
