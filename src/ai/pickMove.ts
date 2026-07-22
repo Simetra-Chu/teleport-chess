@@ -1,6 +1,8 @@
 import type { GameState, TeleportConfig } from '../chessEngine'
 import { isBlack, isWhite } from '../chessEngine'
 import { getAllLegalMoves } from './legalMoves'
+import { pickOpeningMove } from './openingBook'
+import { isOpeningPhase } from './pieceSquare'
 import { searchBestMove } from './search'
 import type { AiDifficulty, AiMove } from './types'
 
@@ -23,14 +25,24 @@ export function pickAiMove(
   difficulty: AiDifficulty,
   aiIsWhite: boolean,
 ): AiMove | null {
-  const moves = getAllLegalMoves(state, config)
+  const moves = getAllLegalMoves(state, config, { forSearch: false })
   if (moves.length === 0) return null
 
   if (difficulty === 'easy') {
+    if (isOpeningPhase(state) && Math.random() < 0.55) {
+      const book = pickOpeningMove(state, moves)
+      if (book) return book
+    }
     return pickEasy(state, moves)
   }
 
-  const depth = difficulty === 'medium' ? 1 : 2
+  // 中等/困难：开局库 + 搜索（参考 js-chess-engine / Betafish 的分层思路）
+  if (isOpeningPhase(state)) {
+    const book = pickOpeningMove(state, moves)
+    if (book) return book
+  }
+
+  const depth = difficulty === 'medium' ? 2 : 2
   return searchBestMove(state, config, depth, aiIsWhite)
 }
 
