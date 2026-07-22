@@ -20,6 +20,7 @@ export function usePvE() {
 
   const aiColor: PlayerColor = playerColor === 'white' ? 'black' : 'white'
   const aiTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const aiRunIdRef = useRef(0)
 
   const patchConfig = useCallback((partial: Partial<TeleportConfig>) => {
     setConfig((prev) => ({ ...prev, ...partial }))
@@ -27,6 +28,8 @@ export function usePvE() {
 
   const startGame = useCallback(
     (color: PlayerColor, diff: AiDifficulty, cfg: TeleportConfig) => {
+      if (aiTimerRef.current) clearTimeout(aiTimerRef.current)
+      aiRunIdRef.current += 1
       setConfig(cfg)
       setPlayerColor(color)
       setDifficulty(diff)
@@ -40,6 +43,7 @@ export function usePvE() {
 
   const leaveGame = useCallback(() => {
     if (aiTimerRef.current) clearTimeout(aiTimerRef.current)
+    aiRunIdRef.current += 1
     setAiThinking(false)
     setGameResult(null)
     setPhase('lobby')
@@ -50,25 +54,43 @@ export function usePvE() {
   }, [aiColor])
 
   const restartGame = useCallback(() => {
+    if (aiTimerRef.current) clearTimeout(aiTimerRef.current)
+    aiRunIdRef.current += 1
     setGameState(initGame(config))
     setGameResult(null)
     setAiThinking(false)
   }, [config])
 
   useEffect(() => {
-    if (phase !== 'game' || gameResult || aiThinking) return
+    if (phase !== 'game' || gameResult) {
+      setAiThinking(false)
+      return
+    }
 
     const aiIsWhite = aiColor === 'white'
-    if (gameState.white_turn !== aiIsWhite) return
+    if (gameState.white_turn !== aiIsWhite) {
+      setAiThinking(false)
+      return
+    }
 
     const outcome = getGameOutcome(gameState, config)
-    if (outcome.status !== 'ongoing') return
+    if (outcome.status !== 'ongoing') {
+      setAiThinking(false)
+      return
+    }
 
+    const runId = ++aiRunIdRef.current
     setAiThinking(true)
+
+    const snapshot = gameState
+    const cfg = config
+    const diff = difficulty
+
     aiTimerRef.current = setTimeout(() => {
-      const move = pickAiMove(gameState, config, difficulty, aiIsWhite)
+      if (runId !== aiRunIdRef.current) return
+      const move = pickAiMove(snapshot, cfg, diff, aiIsWhite)
       if (move) {
-        setGameState(applyAiMove(gameState, config, move))
+        setGameState(applyAiMove(snapshot, cfg, move))
       }
       setAiThinking(false)
     }, AI_THINK_DELAY_MS)
@@ -76,7 +98,7 @@ export function usePvE() {
     return () => {
       if (aiTimerRef.current) clearTimeout(aiTimerRef.current)
     }
-  }, [gameState, config, difficulty, aiColor, phase, gameResult, aiThinking])
+  }, [gameState, config, difficulty, aiColor, phase, gameResult])
 
   useEffect(() => {
     return () => {

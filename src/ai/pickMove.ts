@@ -35,4 +35,4 @@ export function pickAiMove(
 }
 
 /** 前端模拟思考延迟（毫秒） */
-export const AI_THINK_DELAY_MS = 500
+export const AI_THINK_DELAY_MS = 180

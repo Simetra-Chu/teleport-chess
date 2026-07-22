@@ -62,29 +62,38 @@ export default function LobbyPanel({
 
   return (
     <div className="lobby-page">
-      <div className="lobby-mode-tabs mx-auto mb-4 flex max-w-lg gap-2 rounded-2xl border border-white/10 bg-black/30 p-1">
-        <button
-          type="button"
-          onClick={() => onLobbyModeChange('online')}
-          className={`min-h-11 flex-1 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
-            lobbyMode === 'online'
-              ? 'bg-purple-600 text-white shadow-lg shadow-purple-900/30'
-              : 'text-white/55 hover:text-white/80'
-          }`}
-        >
-          在线联机
-        </button>
-        <button
-          type="button"
-          onClick={() => onLobbyModeChange('pve')}
-          className={`min-h-11 flex-1 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
-            lobbyMode === 'pve'
-              ? 'bg-amber-600 text-white shadow-lg shadow-amber-900/30'
-              : 'text-white/55 hover:text-white/80'
-          }`}
-        >
-          单机人机
-        </button>
+      <div className="lobby-mode-banner mx-auto mb-6 w-full max-w-lg">
+        <p className="mb-3 text-center text-sm font-bold tracking-wide text-amber-300">
+          选择游戏模式
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => onLobbyModeChange('online')}
+            className={`min-h-[5.5rem] rounded-2xl border-2 px-4 py-4 text-left transition ${
+              lobbyMode === 'online'
+                ? 'border-purple-400 bg-purple-600/25 shadow-lg shadow-purple-900/40 ring-2 ring-purple-400/50'
+                : 'border-white/15 bg-black/35 hover:border-white/30 hover:bg-black/45'
+            }`}
+          >
+            <span className="text-2xl">🌐</span>
+            <p className="mt-2 text-base font-bold text-white">在线联机</p>
+            <p className="mt-1 text-xs text-white/55">创建或加入房间</p>
+          </button>
+          <button
+            type="button"
+            onClick={() => onLobbyModeChange('pve')}
+            className={`min-h-[5.5rem] rounded-2xl border-2 px-4 py-4 text-left transition ${
+              lobbyMode === 'pve'
+                ? 'border-amber-400 bg-amber-600/25 shadow-lg shadow-amber-900/40 ring-2 ring-amber-400/50'
+                : 'border-white/15 bg-black/35 hover:border-white/30 hover:bg-black/45'
+            }`}
+          >
+            <span className="text-2xl">🤖</span>
+            <p className="mt-2 text-base font-bold text-white">单机人机</p>
+            <p className="mt-1 text-xs text-white/55">本地 AI 对战</p>
+          </button>
+        </div>
       </div>
 
       <div className="lobby-layout">
@@ -189,9 +198,6 @@ export default function LobbyPanel({
                   </button>
                 ))}
               </div>
-              <p className="mt-3 text-xs leading-relaxed text-white/40">
-                简单：偏随机，优先吃子/瞬移；中等：2 层搜索；困难：3 层 Alpha-Beta，重视瞬移战术
-              </p>
             </section>
 
             <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
