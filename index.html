@@ -8,9 +8,78 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="app-build" content="vercel" />
     <title>瞬移国际象棋 · Teleport Chess</title>
+    <style>
+      #boot-status {
+        position: fixed;
+        inset: 0;
+        z-index: 99999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+        padding: 24px;
+        background: #0d0d14;
+        color: #fff;
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        text-align: center;
+      }
+      #boot-status-card {
+        width: 100%;
+        max-width: 360px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 18px;
+        padding: 24px 20px;
+        background: #171722;
+      }
+      #boot-status-title {
+        margin: 0 0 10px;
+        font-size: 18px;
+      }
+      #boot-status-detail {
+        margin: 0;
+        color: rgba(255, 255, 255, 0.62);
+        font-size: 14px;
+        line-height: 1.7;
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div id="boot-status">
+        <div id="boot-status-card">
+          <p id="boot-status-title">页面已下载，正在启动游戏…</p>
+          <p id="boot-status-detail">如果这里停留超过 10 秒，请更新浏览器或切换到极速模式。</p>
+        </div>
+      </div>
+    </div>
+    <script>
+      (function () {
+        function showBootError(message) {
+          var title = document.getElementById('boot-status-title');
+          var detail = document.getElementById('boot-status-detail');
+          if (title) title.innerText = '游戏脚本启动失败';
+          if (detail) {
+            detail.innerText =
+              message +
+              '。请在 QQ/百度浏览器中切换“极速模式”，或升级浏览器后重试。';
+          }
+        }
+
+        window.addEventListener('error', function (event) {
+          showBootError(event.message || '浏览器内核不兼容');
+        });
+
+        window.addEventListener('unhandledrejection', function () {
+          showBootError('浏览器无法运行当前页面');
+        });
+
+        window.setTimeout(function () {
+          if (!document.documentElement.getAttribute('data-app-ready')) {
+            showBootError('脚本加载超时或浏览器内核过旧');
+          }
+        }, 10000);
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
